@@ -47,8 +47,8 @@ def _run_cmd(tool_file, cfg_file, other_opts):
 def main():
     args = parse_args()
     other_opts = ''
-    if args.mode in ['train', 'test']:
-        other_opts += '--multi-gpu-testing '
+#     if args.mode in ['train', 'test']:
+#         other_opts += '--multi-gpu-testing '
     other_opts += 'OUTPUT_DIR outputs/{}  '.format(
         args.cfg_file)
     if args.opts is not None:
@@ -60,8 +60,11 @@ def main():
         tool_file = 'compute_tracks.py'
     elif args.mode == 'eval':
         tool_file = 'eval_mpii.py'
+    elif args.mode == 'vis':
+        tool_file = 'visualize_results_v2.py'
+    elif args.mode == 'get_det':
+        tool_file = 'get_detection_results.py'
     _run_cmd(tool_file, args.cfg_file, other_opts)
-
 
 if __name__ == '__main__':
     main()
