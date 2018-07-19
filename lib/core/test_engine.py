@@ -347,7 +347,6 @@ def test_net_on_dataset(multi_gpu=False):
             num_images, output_dir)
     else:
         all_boxes, all_segms, all_keyps = test_net()
-    print(len(all_boxes),len(all_boxes[1]))
     test_timer.toc()
     logger.info('Total inference time: {:.3f}s'.format(
         test_timer.average_time))
@@ -358,6 +357,7 @@ def test_net_on_dataset(multi_gpu=False):
             score_ap, score_mot,apAll, preAll, recAll, mota =run_posetrack_tracking(output_dir, roidb)
             ##################### add by jianbo #############
             import re,os,json
+            from core.config import get_log_dir_path
             tmp_dic={
                 "total_AP": score_ap.tolist(),
                 "total_MOTA":score_mot.tolist(),
@@ -366,13 +366,7 @@ def test_net_on_dataset(multi_gpu=False):
                 "recAll": recAll.tolist(),
                 "mota":mota.tolist()
             }
-            patt=r"2d_best/(.+?\.yaml)"
-            cfg_file=re.findall(patt,cfg.OUTPUT_DIR)[0]
-            if cfg.TEST.OPTICAL_BBOX:
-                dir_path="tools/show_results/%s_optical_choice=%d_nms=%f_score=_%f"%(cfg_file,cfg.TEST.OPTICAL_CHOICE,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH)
-            else:
-                dir_path="tools/show_results/%s_nms=%f_score=_%f"%(cfg_file,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH)
-            
+            dir_path=get_log_dir_path()
             if not os.path.exists(dir_path):
                 os.mkdir(dir_path)
             f=open(dir_path+"/eval.json","w")

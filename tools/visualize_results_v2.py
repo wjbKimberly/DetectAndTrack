@@ -119,7 +119,6 @@ def vis(roidb, detections_pkl, thresh, output_dir):
         dets = pickle.load(f)
     
     all_boxes = dets['all_boxes']
-    print(len(all_boxes),all_boxes[1])
     if 'all_keyps' in dets:
         all_keyps = dets['all_keyps']
     else:
@@ -143,7 +142,9 @@ def vis(roidb, detections_pkl, thresh, output_dir):
         out_path = osp.join(output_dir, out_name)
         gen_utils.mkdir_p(osp.dirname(out_path))
 #         cv2.imwrite(out_path, combined)
+################ jianbo
         cv2.imwrite(out_path, pred)
+################ jianbo
 
 if __name__ == '__main__':
     args = _parse_args()

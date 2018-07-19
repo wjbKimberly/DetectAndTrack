@@ -660,11 +660,12 @@ def _summarize_track_stats(all_tracks, json_data):
                     lengths.append(cur_len)
                     cur_len = 0 if track_id not in tracks else 1
         all_lengths += lengths
-    print('Track length (min/avg/max): {} {} {}'.format(
-        np.min(all_lengths),
-        np.mean(all_lengths),
-        np.max(all_lengths)))
-
+#delete by qiukai
+#    print('Track length (min/avg/max): {} {} {}'.format(
+#        np.min(all_lengths),
+#        np.mean(all_lengths),
+#        np.max(all_lengths)))
+#delete by qiukai
 
 def compute_matches_tracks(json_data, dets, lstm_model):
     # Consider all consecutive frames, and match the boxes

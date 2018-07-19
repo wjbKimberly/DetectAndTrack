@@ -33,9 +33,12 @@ def process_frame(si, nJoints, seqidxs, seqidxsUniq, motAll, metricsMidNames):
         # iterate over joints
         FP=np.zeros((nJoints+1))
         FN=np.zeros((nJoints+1))
+        FN_unmatch_curr=np.zeros((nJoints+1))
+        Match_exce_thre=np.zeros((nJoints+1))
         IDSW=np.zeros((nJoints+1))
+        gt_num=0
         for i in range(nJoints):
-            FP_i,FN_i,IDSW_i=[0],[0],[0]
+            FP_i,FN_i,FN_unmatch_curr_i,Match_exce_thre_i,IDSW_i=[0],[0],[0],[0],[0]
             # GT tracking ID
             trackidxGT = motAll[imgidx][i]["trackidxGT"]
             # prediction tracking ID
@@ -50,36 +53,39 @@ def process_frame(si, nJoints, seqidxs, seqidxsUniq, motAll, metricsMidNames):
                 dist,  # Distances from objects to hypotheses
                 FP_i,
                 FN_i,
+                FN_unmatch_curr_i,
+                Match_exce_thre_i,
                 IDSW_i
             )
             FP[i]=FP_i[0]
             FN[i]=FN_i[0]
+            FN_unmatch_curr_i=FN_unmatch_curr_i[0]
+            Match_exce_thre_i=Match_exce_thre_i[0]
             IDSW[i]=IDSW_i[0]
+            gt_num+=len(trackidxGT)
         FP[nJoints]=FP.sum()
         FN[nJoints]=FN.sum()
+        FN_unmatch_curr[nJoints]=FN_unmatch_curr.sum()
+        Match_exce_thre[nJoints]=Match_exce_thre.sum()
         IDSW[nJoints]=IDSW.sum()
         ######################## save fp,fn,idsw values #################
         import re,os,json
-        from core.config import cfg
+        from core.config import get_log_dir_path
 #         print(motAll[imgidx][0])
         tmp_dic={
                     "FP":FP.tolist(),
                     "FN":FN.tolist(),
+                    "FN_unmatch_curr":FN_unmatch_curr.tolist(),
+                    "Match_exce_thre":Match_exce_thre.tolist(),
                     "IDSW":IDSW.tolist(),
-                    "gt_num":len(trackidxGT),
+                    "gt_num":gt_num,
                     "image_name":motAll[imgidx]["image_name"]
 #                     "image_name":motAll[imgidx]["image_name"]
         }
         gt_num_npy=np.full((nJoints+1),tmp_dic["gt_num"])
         tmp_dic["mota_i"]=100*(  1-(FP+FN+IDSW)/  gt_num_npy).mean()
         if True or tmp_dic["mota_i"]<0:
-            patt=r"2d_best/(.+?\.yaml)"
-            cfg_file=re.findall(patt,cfg.OUTPUT_DIR)[0]
-            
-            if cfg.TEST.OPTICAL_BBOX:
-                dir_path="tools/show_results/%s_optical_choice=%d_nms=%f_score=_%f"%(cfg_file,cfg.TEST.OPTICAL_CHOICE,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH)
-            else:
-                dir_path="tools/show_results/%s_nms=%f_score=_%f"%(cfg_file,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH)
+            dir_path=get_log_dir_path()
             if not os.path.exists(dir_path):
                 os.mkdir(dir_path)
             dir_path+="/mid_mota"

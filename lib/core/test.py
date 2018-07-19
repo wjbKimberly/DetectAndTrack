@@ -889,7 +889,7 @@ def keypoint_results(cls_boxes, pred_heatmaps, ref_boxes):
 
     kps = [xy_preds[i] for i in range(xy_preds.shape[0])]
     cls_keyps[person_idx] = kps
-    return cls_keyps
+    return cls_keyps,all_xy_preds
 
 ####################### optical flow bbox propagation begin#######################
 import cv2
@@ -900,6 +900,98 @@ import copy
 
 #use cv2 version, expected to add flownet2_version
 # when use opencv, pay attention to transfer NCHW to NHWC for use with OpenCV
+
+# Assume that the remaining boxes all been passed by nms operation, the scores of them are highly closed to 0.999
+# we use iou to filter the bboxes
+def get_area(dets):
+    dets_x1 = dets[:, 0]
+    dets_y1 = dets[:, 1]
+    dets_x2 = dets[:, 2]
+    dets_y2 = dets[:, 3]
+    areas = (dets_x2 - dets_x1 + 1) * (dets_y2 - dets_y1 + 1)
+    return areas 
+def get_inter(opt_i,det_i):
+    ix1,iy1,ix2,iy2 = det_i[0],det_i[1],det_i[2],det_i[3]
+    jx1,jy1,jx2,jy2 = opt_i[0],opt_i[1],opt_i[2],opt_i[3]
+    xx1 = max(ix1,jx1)
+    yy1 = max(iy1,jy1)
+    xx2 = min(ix2,jx2)
+    yy2 = min(iy2,jy2)
+    w = max(0.0, xx2 - xx1 + 1)
+    h = max(0.0, yy2 - yy1 + 1)
+    inter = w * h
+    return inter
+def iou_drive_nms(opts,dets):
+    # get iou
+    iou_metrics=np.zeros((opts.shape[0],dets.shape[0]), dtype=np.float32)
+    areas_dets= get_area(dets)
+    areas_opts= get_area(opts)
+    suppressed_opt =np.zeros((opts.shape[0]), dtype=np.int)
+    suppressed_det =np.zeros((dets.shape[0]), dtype=np.int)
+    suppressed_iou =np.zeros((opts.shape[0],dets.shape[0]), dtype=np.int)
+    
+    for i,det_i in enumerate(opts):
+        for j,opt_i in enumerate(dets):
+            inter =get_inter(opt_i,det_i)
+            ovr = inter / (areas_opts[i]+areas_dets[j] - inter)
+            iou_metrics[i][j]=ovr
+    abandon_cnt=0
+    add_opt_bbox_num=int(cfg.TEST.FORCE_ADD_OPTICAL*dets.shape[0])
+    
+    pos_list=np.argsort(-iou_metrics)
+    for i in range(opts.shape[0]-add_opt_bbox_num):
+        pos=pos_list[i]
+        w=opts.shape[0]
+        x_int = pos % w
+        y_int = (pos - x_int) // w
+        suppressed_opt[x_int]=1
+        
+#     while True:
+#         if abandon_cnt>= add_opt_bbox_num:
+#             break
+#         pos=np.argmax(iou_metrics[~suppressed_iou])
+#         w=opts.shape[0]
+#         x_int = pos % w
+#         y_int = (pos - x_int) // w
+#         suppressed_opt[x_int]=1
+#         suppressed_iou[x_int,y_int]=1
+        
+#         abandon_cnt+=1
+        #######################!!!!!!!!!! under
+                    
+    return np.where(suppressed_opt == 0)[0],np.where(suppressed_det == 0)[0]
+
+
+def optical_detect_nms(opt_boxes,opt_scores,det_boxes,det_scores):
+    num_classes = cfg.MODEL.NUM_CLASSES
+    time_dim = 1
+    cls_boxes = [[] for _ in range(num_classes)]
+    # Apply threshold on detection probabilities and apply NMS
+    # Skip j = 0, because it's the background class
+    for j in range(1, num_classes):
+        
+        opt_scores_j = opt_scores[:, j]
+        opt_boxes_j = opt_boxes[:, j * 4 * time_dim:(j + 1) * 4 * time_dim]
+        opt_j = np.hstack((opt_boxes_j, opt_scores_j[:, np.newaxis])).astype(
+            np.float32, copy=False)
+        
+        det_scores_j = det_scores[:, j]
+        det_boxes_j = det_boxes[:, j * 4 * time_dim:(j + 1) * 4 * time_dim]
+        det_j = np.hstack((det_boxes_j, det_scores_j[:, np.newaxis])).astype(
+            np.float32, copy=False)
+        
+        keep_opt,keep_det =iou_drive_nms(opt_j,det_j)
+        
+        nms_dets = det_j[keep_det, :]
+        nms_opts = opt_j[keep_opt, :]
+        
+        cls_boxes[j] = np.vstack((nms_dets,nms_opts))
+        
+        
+    im_results = np.vstack([cls_boxes[j] for j in range(1, num_classes)])
+    boxes = im_results[:, :-1]
+    scores = im_results[:, -1]
+    return scores, boxes, cls_boxes
 
 def get_padding_flownet2(pim1_path, pim2_path):  
     
@@ -1058,7 +1150,8 @@ def im_detect_all(model, entry, box_proposals, timers=None,pre_entry=None,pre_ke
             "image_name":entry["image"][0],
             "size":(entry["width"],entry["height"]),
             "frame_id":entry["frame_id"],
-            "detect":boxes.tolist()
+            "detect":boxes.tolist(),
+            "det_scores":scores.tolist()        
         }
     
     import json
@@ -1069,13 +1162,21 @@ def im_detect_all(model, entry, box_proposals, timers=None,pre_entry=None,pre_ke
         optical_bbox_scores=optical_bbox_scores.reshape((len(optical_bbox_scores),1))
         scores=scores.reshape((len(scores),1))
         tmp_dic["optical_bbox"]=optical_bbox.tolist()
+        tmp_dic["optical_bbox_scores"]=optical_bbox_scores.tolist()
         
-        boxes=np.vstack(( boxes,optical_bbox ))
-        scores=np.vstack(( scores,optical_bbox_scores ))
-        # add 1 dimension for background
-        scores=np.hstack(( np.zeros_like(scores),scores))
-        boxes=np.hstack(( np.zeros_like(boxes),boxes ))
-        scores, boxes, cls_boxes = box_results_with_nms_and_limit(scores, boxes,cfg.TEST.NMS_OPTICAL)
+        if cfg.TEST.FORCE_ADD_OPTICAL>0.0:
+            scores=np.hstack(( np.zeros_like(scores),scores))
+            boxes=np.hstack(( np.zeros_like(boxes),boxes ))
+            optical_bbox_scores=np.hstack(( np.zeros_like(optical_bbox_scores),optical_bbox_scores))
+            optical_bbox=np.hstack(( np.zeros_like(optical_bbox),optical_bbox ))
+            scores, boxes, cls_boxes =optical_detect_nms(optical_bbox,optical_bbox_scores,boxes,scores)
+        else:
+            boxes=np.vstack(( boxes,optical_bbox ))
+            scores=np.vstack(( scores,optical_bbox_scores ))
+            # add 1 dimension for background
+            scores=np.hstack(( np.zeros_like(scores),scores))
+            boxes=np.hstack(( np.zeros_like(boxes),boxes ))
+            scores, boxes, cls_boxes = box_results_with_nms_and_limit(scores, boxes,cfg.TEST.NMS_OPTICAL)
         tmp_dic["pre_bbox"]=pre_bbox.tolist()
         tmp_dic["pre_keypoints"]=[i.tolist() for i in pre_keypoints[1]]
         tmp_dic["nms_ans"]=boxes.tolist()
@@ -1108,22 +1209,17 @@ def im_detect_all(model, entry, box_proposals, timers=None,pre_entry=None,pre_ke
         timers['im_detect_keypoints'].toc()
 
         timers['misc_keypoints'].tic()
-        cls_keyps = keypoint_results(cls_boxes, heatmaps, boxes)
+        cls_keyps,keypoints = keypoint_results(cls_boxes, heatmaps, boxes)
         timers['misc_keypoints'].toc()
     else:
         cls_keyps = None
     ####################### save tmp_dic #######################
     if cfg.MODEL.KEYPOINTS_ON and boxes.shape[0] > 0:
-        tmp_dic["keypoints"]=[i.tolist() for i in cls_keyps[1]]
+        tmp_dic["keypoints"]=[i.transpose([1,0]).tolist() for i in keypoints[0]]
     import re
-    patt=r"2d_best/(.+?\.yaml)"
-    cfg_file=re.findall(patt,cfg.OUTPUT_DIR)[0]
-    if cfg.TEST.OPTICAL_BBOX:
-        simiou,simcos=cfg.TRACKING.DISTANCE_METRIC_WTS
-        dir_path="tools/show_results/%s_optical_choice=%d_nms=%f_score=%f_drop_optical_kps=%f_nms_opt=%f"%(cfg_file,cfg.TEST.OPTICAL_CHOICE,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH,cfg.TEST.DROP_OPTICAL_KPS_SCORE,cfg.TEST.NMS_OPTICAL)
-    else:
-        dir_path="tools/show_results/%s_nms=%f_score=_%f"%(cfg_file,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH)
     import os
+    from core.config import get_log_dir_path
+    dir_path=get_log_dir_path()
     if not os.path.exists(dir_path):
         os.mkdir(dir_path)
     if "PoseTrack" in tmp_dic["image_name"]:

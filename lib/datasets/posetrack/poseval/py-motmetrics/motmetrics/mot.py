@@ -87,7 +87,7 @@ class MOTAccumulator(object):
         self.m = {} # Pairings up to current timestamp  
         self.last_occurrence = {} # Tracks most recent occurance of object
 
-    def update(self, oids, hids, dists, FP,FN,IDSW,frameid=None):
+    def update(self, oids, hids, dists, FP,FN,FN_unmatch_curr,Match_exce_thre,IDSW,frameid=None):
         """Updates the accumulator with frame specific objects/detections.
 
         This method generates events based on the following algorithm [1]:
@@ -157,7 +157,12 @@ class MOTAccumulator(object):
                     hids[j] = ma.masked
                     self.m[oids.data[i]] = hids.data[j]
                     self.events.loc[(frameid, next(eid)), :] = ['MATCH', oids.data[i], hids.data[j], dists[i, j]]
-            
+                #############jianbo add############
+                # o and h are matched in the last frame but their distance in current frame is larger than threshold 
+                else:
+                    FN_unmatch_curr+=1
+                #############jianbo add############
+                    
             # 2. Try to remaining objects/hypotheses
             dists[oids.mask, :] = INVDIST
             dists[:, hids.mask] = INVDIST
@@ -165,6 +170,10 @@ class MOTAccumulator(object):
             rids, cids = linear_sum_assignment(dists)
             for i, j in zip(rids, cids):                
                 if dists[i, j] == INVDIST:
+                #############jianbo add############
+                # for this gt, it find a matched hypothesis but the distance exceed the threshold
+                    Match_exce_thre+=1
+                #############jianbo add############
                     continue
                 
                 o = oids[i]

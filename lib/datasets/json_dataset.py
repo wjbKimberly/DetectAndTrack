@@ -66,7 +66,12 @@ DATASETS = {
     'mens': {
         IM_DIR: '/home/data/DetectAndTrack-wjb/lib/datasets/data/mens/',
         ANN_FN: '/home/data/DetectAndTrack-wjb/lib/datasets/lists/mens/mens.json',
-        ANN_DN: 'lib/datasets/data/PoseTrackV1.0_Annots_test_json',
+#         ANN_DN: 'lib/datasets/data/PoseTrackV1.0_Annots_test_json',
+    },
+    'football': {
+        IM_DIR: '/home/data/DetectAndTrack-qk/lib/datasets/data/football/',
+        ANN_FN: '/home/data/DetectAndTrack-qk/lib/datasets/lists/football/football.json',
+#         ANN_DN: 'lib/datasets/data/PoseTrackV1.0_Annots_test_json',
     },
 }
 
