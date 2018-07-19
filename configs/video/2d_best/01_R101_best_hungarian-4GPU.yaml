@@ -54,6 +54,7 @@ TRAIN:
 TEST:
   # DATASET: keypoints_coco_2014_minival
   DATASET: posetrack_v1.0_val
+#   DATASET: posetrack_v1.0_test
   SCALES: (800,)
   MAX_SIZE: 1333
   NMS: 0.5

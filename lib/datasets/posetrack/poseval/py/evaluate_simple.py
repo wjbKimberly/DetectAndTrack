@@ -14,7 +14,6 @@ from datasets.posetrack.poseval.py.eval_helpers import (
 def evaluate(gtdir, preddir, eval_pose=True, eval_track=True,
              eval_upper_bound=False):
     gtFramesAll, prFramesAll = load_data_dir(['', gtdir, preddir])
-
     print('# gt frames  :', len(gtFramesAll))
     print('# pred frames:', len(prFramesAll))
 

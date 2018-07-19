@@ -53,9 +53,19 @@ DATASETS = {
         ANN_FN: 'lib/datasets/lists/PoseTrack/v1.0/posetrack_val.json',
         ANN_DN: 'lib/datasets/data/PoseTrackV1.0_Annots_val_json',
     },
+    'posetrack_v1.0_val_small': {
+        IM_DIR: '/home/data/DetectAndTrack-wjb/lib/datasets/data/PoseTrack/',
+        ANN_FN: '/home/data/DetectAndTrack-wjb/lib/datasets/lists/PoseTrack/v1.0/posetrack_val_small.json',
+        ANN_DN: '/home/data/DetectAndTrack-wjb/lib/datasets/data/PoseTrackV1.0_Annots_val_small_json',
+    },
     'posetrack_v1.0_test': {
         IM_DIR: 'lib/datasets/data/PoseTrack/',
         ANN_FN: 'lib/datasets/lists/PoseTrack/v1.0/posetrack_test.json',
+        ANN_DN: 'lib/datasets/data/PoseTrackV1.0_Annots_test_json',
+    },
+    'mens': {
+        IM_DIR: '/home/data/DetectAndTrack-wjb/lib/datasets/data/mens/',
+        ANN_FN: '/home/data/DetectAndTrack-wjb/lib/datasets/lists/mens/mens.json',
         ANN_DN: 'lib/datasets/data/PoseTrackV1.0_Annots_test_json',
     },
 }

@@ -119,8 +119,23 @@ def empty_results(num_classes, num_images):
 def extend_results(index, all_res, im_res):
     for j in range(1, len(im_res)):
         all_res[j][index] = im_res[j]
+        
+def judge_prev_info(pre_entry,pre_keypoints,pre_bbox,pre_scores,entry):
+    current_frame_id=entry['frame_id']
+    num_frames=entry['nframes']
+    current_image_id=entry['id']
+    current_video_name=entry['original_file_name'][0][:-12]
+    
+    pre_frame_id=pre_entry['frame_id']
+    pre_video_name=pre_entry['original_file_name'][0][:-12]
 
-
+    #judge whether the last frame and current frame are in the same video.
+    if current_frame_id==pre_frame_id+1 and current_video_name==pre_video_name:
+        return pre_entry,pre_keypoints,pre_bbox,pre_scores
+    else:
+        # !! pay attention that I regard the roib list sorted by frame order
+        return None,None,None,None
+            
 def test_net(ind_range=None):
     assert cfg.TEST.WEIGHTS != '', \
         'TEST.WEIGHTS must be set to the model file to test'
@@ -139,6 +154,12 @@ def test_net(ind_range=None):
     timers = defaultdict(Timer)
     gpu_dev = core.DeviceOption(caffe2_pb2.CUDA, cfg.ROOT_GPU_ID)
     name_scope = 'gpu_{}'.format(cfg.ROOT_GPU_ID)
+    
+    #for optical bbox
+    pre_entry=None
+    pre_keypoints=None
+    pre_bbox=None
+    pre_scores=None
     for i, entry in enumerate(roidb):
         if cfg.MODEL.FASTER_RCNN:
             box_proposals = None
@@ -151,13 +172,20 @@ def test_net(ind_range=None):
             box_proposals = entry['boxes'][entry['gt_classes'] == 0]
             if len(box_proposals) == 0:
                 continue
-
         im = image_utils.read_image_video(entry)
+        ####################### optical flow bbox propagation begin#######################
+        # ignore the first frame 
+        if i!=0:
+            pre_entry,pre_keypoints,pre_bbox,pre_scores=judge_prev_info(pre_entry,pre_keypoints,pre_bbox,pre_scores,entry)
         with core.NameScope(name_scope):
             with core.DeviceScope(gpu_dev):
-                cls_boxes_i, cls_segms_i, cls_keyps_i = im_detect_all(
-                    model, im, box_proposals, timers)
-
+                boxes_i,scores_i,cls_boxes_i, cls_segms_i, cls_keyps_i = im_detect_all(
+                    model,entry, box_proposals, timers,pre_entry,pre_keypoints,pre_bbox,pre_scores)
+        pre_entry=entry
+        pre_keypoints=cls_keyps_i
+        pre_bbox=boxes_i
+        pre_scores=scores_i
+        
         extend_results(i, all_boxes, cls_boxes_i)
         if cls_segms_i is not None:
             extend_results(i, all_segms, cls_segms_i)
@@ -319,15 +347,50 @@ def test_net_on_dataset(multi_gpu=False):
             num_images, output_dir)
     else:
         all_boxes, all_segms, all_keyps = test_net()
+    print(len(all_boxes),len(all_boxes[1]))
     test_timer.toc()
     logger.info('Total inference time: {:.3f}s'.format(
         test_timer.average_time))
     # Run tracking and eval for posetrack datasets
     if dataset.name.startswith('posetrack') or dataset.name.startswith('kinetics'):
         roidb, dataset, _, _, _ = get_roidb_and_dataset(None)
+        if dataset.name.startswith('posetrack') :
+            score_ap, score_mot,apAll, preAll, recAll, mota =run_posetrack_tracking(output_dir, roidb)
+            ##################### add by jianbo #############
+            import re,os,json
+            tmp_dic={
+                "total_AP": score_ap.tolist(),
+                "total_MOTA":score_mot.tolist(),
+                "apAll":apAll.tolist(),
+                "preAll": preAll.tolist(),
+                "recAll": recAll.tolist(),
+                "mota":mota.tolist()
+            }
+            patt=r"2d_best/(.+?\.yaml)"
+            cfg_file=re.findall(patt,cfg.OUTPUT_DIR)[0]
+            if cfg.TEST.OPTICAL_BBOX:
+                dir_path="tools/show_results/%s_optical_choice=%d_nms=%f_score=_%f"%(cfg_file,cfg.TEST.OPTICAL_CHOICE,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH)
+            else:
+                dir_path="tools/show_results/%s_nms=%f_score=_%f"%(cfg_file,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH)
+            
+            if not os.path.exists(dir_path):
+                os.mkdir(dir_path)
+            f=open(dir_path+"/eval.json","w")
+            f.write(json.dumps(tmp_dic))
+            f.flush()
+            f.close()
+            ##################### add by jianbo #############
+        else:
+            run_posetrack_tracking(output_dir, roidb)
+    else:
+        ###jianbo
+        roidb, dataset, _, _, _ = get_roidb_and_dataset(None)
         run_posetrack_tracking(output_dir, roidb)
-    try:
-        evaluate_all(dataset, all_boxes, all_segms, all_keyps, output_dir)
-    except Exception as e:
-        # Typically would crash as we don't have evaluators for each dataset
-        logger.error('Evaluation crashed with exception {}'.format(e))
+        ####jianbo
+        
+    #####################comment below lines by jianbo
+#     try:
+#         evaluate_all(dataset, all_boxes, all_segms, all_keyps, output_dir)
+#     except Exception as e:
+#         # Typically would crash as we don't have evaluators for each dataset
+#         logger.error('Evaluation crashed with exception {}'.format(e))

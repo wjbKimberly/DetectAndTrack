@@ -26,15 +26,25 @@ from utils.general import mkdir_p
 from convert.data import get_posetrack_kpt_ordering
 
 # Directory with annotation mat files downloaded from PoseTrack website
-mat_dir = '/path/to/posetrack_data/annotations/{}'
-out_path = '/path/to/output/jsons/posetrack_{}.json'
-splits = ['test', 'train', 'val']
+
+
+mat_dir = '/home/data/posetrack_data/posetrack_data/annotations/{}'
+# out_path = '/home/data/posetrack_data/posetrack_data_json/posetrack_{}.json'
+
+out_path = '/home/data/DetectAndTrack-wjb/lib/datasets/lists/PoseTrack/v1.0/posetrack_{}.json'
+
+# mat_dir = '/path/to/posetrack_data/annotations/{}'
+# out_path = '/path/to/output/jsons/posetrack_{}.json'
+splits = ['val_small']
+# splits = ['test', 'train', 'val']
 # Set this to true if need to re-create the video frames. Note that the
 # original frames are in non-standard file format so will need to be fixed.
 if 1:  # `convert` the frames to standard format
     recreate_videos = True
-    vid_indir = '/path/to/posetrack_data/images'
-    vid_outdir = '/path/to/output/images_renamed'
+    vid_indir = '/home/data/posetrack_data/posetrack_data/images'
+    vid_outdir = '/home/data/posetrack_data/posetrack_data/converted_images'
+#     vid_indir = '/path/to/posetrack_data/images'
+#     vid_outdir = '/path/to/output/images_renamed'
 else:  # `convert`-ed frames already exist, do not redo
     recreate_videos = False
     vid_indir = ''

@@ -248,7 +248,6 @@ def im_detect_bbox(model, im, boxes=None):
         # Map scores and predictions back to the original set of boxes
         scores = scores[inv_index, :]
         pred_boxes = pred_boxes[inv_index, :]
-
     return scores, pred_boxes, im_scales
 
 
@@ -747,7 +746,7 @@ def im_detect_keypoints_aug(model, im, boxes):
     return heatmaps_c
 
 
-def box_results_with_nms_and_limit(scores, boxes):
+def box_results_with_nms_and_limit(scores, boxes,nms_iou):
     """Returns bounding-box detection results by thresholding on scores and
     applying non-maximum suppression (NMS).
 
@@ -777,11 +776,11 @@ def box_results_with_nms_and_limit(scores, boxes):
             nms_dets = soft_nms(
                 dets_j,
                 sigma=cfg.TEST.SOFT_NMS.SIGMA,
-                overlap_thresh=cfg.TEST.NMS,
+                overlap_thresh=nms_iou,
                 score_thresh=0.0001,
                 method=cfg.TEST.SOFT_NMS.METHOD)
         else:
-            keep = nms(dets_j, cfg.TEST.NMS)
+            keep = nms(dets_j, nms_iou)
             nms_dets = dets_j[keep, :]
         # Refine the post-NMS boxes using bounding-box voting
         if cfg.TEST.BBOX_VOTE.ENABLED:
@@ -879,7 +878,6 @@ def keypoint_results(cls_boxes, pred_heatmaps, ref_boxes):
                           (t + 1) * cfg.KRCNN.NUM_KEYPOINTS, ...],
             ref_boxes[:, t * 4: (t + 1) * 4]))
     xy_preds = np.concatenate(all_xy_preds, axis=-1)
-
     # NMS OKS
     if cfg.KRCNN.NMS_OKS:
         raise NotImplementedError('Handle tubes')
@@ -893,8 +891,149 @@ def keypoint_results(cls_boxes, pred_heatmaps, ref_boxes):
     cls_keyps[person_idx] = kps
     return cls_keyps
 
+####################### optical flow bbox propagation begin#######################
+import cv2
+import numpy as np
+from convert.box import compute_boxes_from_pose
+import utils.image as image_utils
+import copy
 
-def im_detect_all(model, im, box_proposals, timers=None):
+#use cv2 version, expected to add flownet2_version
+# when use opencv, pay attention to transfer NCHW to NHWC for use with OpenCV
+
+def get_padding_flownet2(pim1_path, pim2_path):  
+    
+    import torch
+    import sys
+    import os.path as osp
+    import os
+    sys.path.insert(0, osp.join(os.getcwd(), '../flownet2-pytorch-qiu/'))
+    sys.path.insert(0, osp.join(os.getcwd(), '../flownet2-pytorch-qiu/utils'))
+    from models import FlowNet2,FlowNet2C,FlowNet2S #the path is depended on where you create this module
+    from frame_utils import read_gen#the path is depended on where you create this module 
+    from torch.autograd import Variable
+    import argparse
+    
+    args = argparse.Namespace(fp16=False, rgb_max=255.)
+    args.grads = {}
+    model_path=cfg.TEST.OPTICAL_MODEL_PATH
+    #initial a Net
+    net = FlowNet2(args).cuda()
+#     net = FlowNet2S(args).cuda()
+    #load the state_dict
+    dict = torch.load(model_path)
+    net.load_state_dict(dict["state_dict"])
+    
+    #load the image pair, you can find this operation in dataset.py
+    pim1 = read_gen(pim1_path)
+    pim2 = read_gen(pim2_path)
+    
+    images = [pim1, pim2]
+    
+    image_size = pim1.shape[:2]
+
+    images = np.array(images).transpose(3, 0, 1, 2)
+    im = torch.from_numpy(images.astype(np.float32)).unsqueeze(0).cuda()
+    
+    #process the image pair to obtian the flow 
+    im=Variable(im)
+    result = net(im).squeeze()
+
+    data = result.data.cpu().numpy().transpose(1, 2, 0)
+    return data
+
+def get_optical_flow(entry,pre_entry):
+    # optical_choice=0 means using cv2 version, =1 means flownet2
+    pim1_path=pre_entry["image"][0]
+    pim2_path=entry["image"][0]
+    if cfg.TEST.OPTICAL_CHOICE==0:
+        pim1 = cv2.imread(pim1_path)
+        pim2 = cv2.imread(pim2_path)
+
+        pim1_gray = cv2.cvtColor(pim1,cv2.COLOR_BGR2GRAY)
+        pim2_gray = cv2.cvtColor(pim1,cv2.COLOR_BGR2GRAY)
+        flow = cv2.calcOpticalFlowFarneback(pim1_gray, pim2_gray, None, 0.5, 3, 15, 3, 5, 1.2, 0)
+
+    else:
+        flow=get_padding_flownet2(pim1_path, pim2_path)
+        
+    return flow
+
+def _shift_using_flow(poses, flow):
+    # too large flow => must be a shot boundary. So don't transfer poses over
+    # shot boundaries
+    res = []
+    for pose in poses:
+        res_pose = copy.deepcopy(pose)
+        x = np.round(copy.deepcopy(pose[0]))
+        y = np.round(copy.deepcopy(pose[1]))
+        if x<0 or y<0 or x>=flow.shape[1] or y>=flow.shape[0]:
+        # Since I wasn't able to move the points for which a valid flow vector
+        # did not exist, set confidence to 0
+            res_pose[3] = 0
+            res_pose[2] = 0
+            res_pose[0] = 0
+            res_pose[1] = 0
+        else:
+            delta_x = flow[y.astype('int'), x.astype('int'), 0]
+            delta_y = flow[y.astype('int'), x.astype('int'), 1]
+            res_pose[0] += delta_x
+            res_pose[1] += delta_y
+        res.append(res_pose)
+    return res
+
+def warp_keypoints_from_flow(flow,pre_keypoints):
+    #transpose keypoints from (4,17) to (17,4) and we just use [0,1,3] indices as [x,y,prob]
+    pre_keypoints_process=pre_keypoints.transpose([1,0])
+    optical_keypoints=copy.deepcopy(pre_keypoints)
+    optical_keypoints_process=_shift_using_flow(pre_keypoints_process,flow)
+    ##transpose keypoints from (17,3) to (3,17) and heatmap line on the row2
+    optical_keypoints=np.asarray(optical_keypoints_process).transpose([1,0])
+    
+    return optical_keypoints
+
+def get_optical_bbox(entry,pre_entry,pre_keypoints,pre_bbox,pre_scores):
+    im = image_utils.read_image_video(entry)
+    pre_im=image_utils.read_image_video(pre_entry)[0]
+    
+    optical_keypoints=[i for i in pre_keypoints]
+    optical_bbox_scores=copy.deepcopy(pre_scores)
+    optical_bbox=copy.deepcopy(pre_bbox)
+    cv2_flow= get_optical_flow(entry,pre_entry)
+    # pre_keypoints[0] is background, ignore it
+    for i,obj_kps_i in enumerate(pre_keypoints[1]):
+        #pre_keypoints[1][i].shape=(4,17)
+        optical_keypoints[1][i]= warp_keypoints_from_flow(cv2_flow,pre_keypoints[1][i])
+    #for compute_boxes_from_pose ,the input should be (frames,17,3) as COCO style, 
+    #The third dimension means the visible label. We only consider the points that are marked "2", i.e. labeled and visible
+    #Here I transpose keypoints from (num,4,17) to (num,17,4) and we just use [0,1,3] indices as [x,y,prob]
+    use_keypoints=np.asarray(optical_keypoints[1]).transpose([0,2,1])[:,:,[0,1,3]]
+    # TODO: Here I regard all keypoints as visible
+    # if prob >cfg.TEST.DROP_KPS_SCORE assume this point is visible
+#     use_keypoints[:,:,2]=2
+    for obj_ind,obj_i in enumerate(use_keypoints):
+        for k_ind,k_i in enumerate(obj_i):
+            if k_i[2]>cfg.TEST.DROP_OPTICAL_KPS_SCORE:
+                use_keypoints[obj_ind][k_ind][2]=2
+    # compute_boxes_from_pose get multiple frames as input,also the output
+    optical_bbox=compute_boxes_from_pose([use_keypoints])[0]
+    # convert COCO style[x,y,w,h] into our style[x1,y1,x2,y2]
+    for i,bbox_i in enumerate(optical_bbox):
+        x1,y1,w,h=bbox_i[0],bbox_i[1],bbox_i[2],bbox_i[3]
+        x2,y2=bbox_i[0]+bbox_i[2],bbox_i[1]+bbox_i[3]
+        x1=np.maximum(np.minimum(x1, pre_im.shape[1] - 1), 0) 
+        x2=np.maximum(np.minimum(x2, pre_im.shape[1] - 1), 0) 
+        y1=np.maximum(np.minimum(y1, pre_im.shape[0] - 1), 0) 
+        y2=np.maximum(np.minimum(y2, pre_im.shape[0] - 1), 0) 
+        
+        optical_bbox[i]=[x1,y1,x2,y2]
+    optical_bbox=np.asarray(optical_bbox)
+    return optical_bbox_scores,optical_bbox
+    
+####################### optical flow bbox propagation end #######################
+
+def im_detect_all(model, entry, box_proposals, timers=None,pre_entry=None,pre_keypoints=None,pre_bbox=None,pre_scores=None):
+    im = image_utils.read_image_video(entry)
     if timers is None:
         timers = defaultdict(Timer)
 
@@ -904,15 +1043,46 @@ def im_detect_all(model, im, box_proposals, timers=None):
     else:
         scores, boxes, im_scales = im_detect_bbox(model, im, box_proposals)
     timers['im_detect_bbox'].toc()
-
     # score and boxes are from the whole image after score thresholding and nms
     # (they are not separated by class)
     # cls_boxes boxes and scores are separated by class and in the format used
     # for evaluating results
     timers['misc_bbox'].tic()
-    scores, boxes, cls_boxes = box_results_with_nms_and_limit(scores, boxes)
+    scores, boxes, cls_boxes = box_results_with_nms_and_limit(scores, boxes,cfg.TEST.NMS)
+    
+    ####################### optical flow bbox propagation begin#######################
+    #of course pre_keypoints!=None and pre_bbox!=None and pre_scores!=None
+    # pay attention that boxes=[R* 4*K ] ,every bbox is in the format of [x1, y1, x2, y2]
+    # pay attention that scores=[R* K ]
+    tmp_dic={
+            "image_name":entry["image"][0],
+            "size":(entry["width"],entry["height"]),
+            "frame_id":entry["frame_id"],
+            "detect":boxes.tolist()
+        }
+    
+    import json
+    if cfg.TEST.OPTICAL_BBOX and pre_entry!=None and pre_keypoints!=None :
+        pre_im=image_utils.read_image_video(pre_entry)
+        optical_bbox_scores,optical_bbox=get_optical_bbox(entry,pre_entry,pre_keypoints,pre_bbox,pre_scores)
+        # as boxes and scores must have background terms, here extend them 
+        optical_bbox_scores=optical_bbox_scores.reshape((len(optical_bbox_scores),1))
+        scores=scores.reshape((len(scores),1))
+        tmp_dic["optical_bbox"]=optical_bbox.tolist()
+        
+        boxes=np.vstack(( boxes,optical_bbox ))
+        scores=np.vstack(( scores,optical_bbox_scores ))
+        # add 1 dimension for background
+        scores=np.hstack(( np.zeros_like(scores),scores))
+        boxes=np.hstack(( np.zeros_like(boxes),boxes ))
+        scores, boxes, cls_boxes = box_results_with_nms_and_limit(scores, boxes,cfg.TEST.NMS_OPTICAL)
+        tmp_dic["pre_bbox"]=pre_bbox.tolist()
+        tmp_dic["pre_keypoints"]=[i.tolist() for i in pre_keypoints[1]]
+        tmp_dic["nms_ans"]=boxes.tolist()
+    tmp_dic["ans_scores"]=scores.tolist()        
+        
+    ####################### optical flow bbox propagation end#######################
     timers['misc_bbox'].toc()
-
     if cfg.MODEL.MASK_ON and boxes.shape[0] > 0:
         raise NotImplementedError('Handle tubes..')
         timers['im_detect_mask'].tic()
@@ -942,7 +1112,31 @@ def im_detect_all(model, im, box_proposals, timers=None):
         timers['misc_keypoints'].toc()
     else:
         cls_keyps = None
-
+    ####################### save tmp_dic #######################
+    if cfg.MODEL.KEYPOINTS_ON and boxes.shape[0] > 0:
+        tmp_dic["keypoints"]=[i.tolist() for i in cls_keyps[1]]
+    import re
+    patt=r"2d_best/(.+?\.yaml)"
+    cfg_file=re.findall(patt,cfg.OUTPUT_DIR)[0]
+    if cfg.TEST.OPTICAL_BBOX:
+        simiou,simcos=cfg.TRACKING.DISTANCE_METRIC_WTS
+        dir_path="tools/show_results/%s_optical_choice=%d_nms=%f_score=%f_drop_optical_kps=%f_nms_opt=%f"%(cfg_file,cfg.TEST.OPTICAL_CHOICE,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH,cfg.TEST.DROP_OPTICAL_KPS_SCORE,cfg.TEST.NMS_OPTICAL)
+    else:
+        dir_path="tools/show_results/%s_nms=%f_score=_%f"%(cfg_file,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH)
+    import os
+    if not os.path.exists(dir_path):
+        os.mkdir(dir_path)
+    if "PoseTrack" in tmp_dic["image_name"]:
+        patt=r"data/PoseTrack/(.+\.jpg)"
+    else:
+        patt=r"/home/data/DetectAndTrack-wjb/lib/datasets/data/mens/(.+\.jpg)"
+    image_name=re.findall(patt,tmp_dic["image_name"])[0]
+    f=open(dir_path+"/%s.json"%str(image_name).replace('/','\\'),"w")
+    f.write(json.dumps(tmp_dic))
+    f.flush()
+    f.close()
+    ####################### save tmp_dic #######################
+    
     # Debugging
     # from utils import vis
     # T = vis.vis_one_image_opencv(im[0], cls_boxes[1], keypoints=cls_keyps[1])
@@ -955,7 +1149,7 @@ def im_detect_all(model, im, box_proposals, timers=None):
     #     cv2.imwrite('/tmp/{}.jpg'.format(t + 1), T)
     # import pdb; pdb.set_trace()
 
-    return cls_boxes, cls_segms, cls_keyps
+    return boxes,scores,cls_boxes, cls_segms, cls_keyps
 
 
 def im_conv_body_only(model, im):

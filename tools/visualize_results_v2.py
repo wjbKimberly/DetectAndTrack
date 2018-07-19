@@ -23,6 +23,7 @@ from tqdm import tqdm
 from core.test_engine import get_roidb_and_dataset
 import utils.vis as vis_utils
 import utils.image as image_utils
+import utils.video_io as video_io
 from core.config import (
     cfg_from_file, assert_and_infer_cfg, get_output_dir, cfg_from_list)
 import utils.general as gen_utils
@@ -116,8 +117,9 @@ def vis(roidb, detections_pkl, thresh, output_dir):
         return
     with open(detections_pkl, 'rb') as f:
         dets = pickle.load(f)
-
+    
     all_boxes = dets['all_boxes']
+    print(len(all_boxes),all_boxes[1])
     if 'all_keyps' in dets:
         all_keyps = dets['all_keyps']
     else:
@@ -126,10 +128,11 @@ def vis(roidb, detections_pkl, thresh, output_dir):
         all_tracks = dets['all_tracks']
     else:
         all_tracks = None
-
+    
     for ix, entry in enumerate(tqdm(roidb)):
         if entry['boxes'] is None or entry['boxes'].shape[0] == 0:
-            continue
+            pass
+#             continue
         gt, pred = _generate_visualizations(
             entry, ix, all_boxes, all_keyps, all_tracks, thresh)
         combined = np.hstack((gt, pred))
@@ -139,8 +142,8 @@ def vis(roidb, detections_pkl, thresh, output_dir):
         out_name = im_name[len(dataset.image_directory):]
         out_path = osp.join(output_dir, out_name)
         gen_utils.mkdir_p(osp.dirname(out_path))
-        cv2.imwrite(out_path, combined)
-
+#         cv2.imwrite(out_path, combined)
+        cv2.imwrite(out_path, pred)
 
 if __name__ == '__main__':
     args = _parse_args()
@@ -163,3 +166,4 @@ if __name__ == '__main__':
     # that currently
     roidb, dataset, _, _, _ = get_roidb_and_dataset(None, include_gt=True)
     vis(roidb, det_file, args.thresh, output_dir)
+    

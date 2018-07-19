@@ -87,7 +87,7 @@ class MOTAccumulator(object):
         self.m = {} # Pairings up to current timestamp  
         self.last_occurrence = {} # Tracks most recent occurance of object
 
-    def update(self, oids, hids, dists, frameid=None):
+    def update(self, oids, hids, dists, FP,FN,IDSW,frameid=None):
         """Updates the accumulator with frame specific objects/detections.
 
         This method generates events based on the following algorithm [1]:
@@ -126,7 +126,7 @@ class MOTAccumulator(object):
         1. Bernardin, Keni, and Rainer Stiefelhagen. "Evaluating multiple object tracking performance: the CLEAR MOT metrics." 
         EURASIP Journal on Image and Video Processing 2008.1 (2008): 1-10.
         """
-            
+        
         oids = ma.array(oids, mask=np.zeros(len(oids)))
         hids = ma.array(hids, mask=np.zeros(len(hids)))  
         dists = np.atleast_2d(dists).astype(float).reshape(oids.shape[0], hids.shape[0])
@@ -173,6 +173,12 @@ class MOTAccumulator(object):
                             self.m[o] != h and \
                             abs(frameid - self.last_occurrence[o]) <= self.max_switch_time
                 cat = 'SWITCH' if is_switch else 'MATCH'
+                
+                #############jianbo add############
+                if is_switch:
+                    IDSW[0]+=1
+                #############jianbo add############
+                                
                 self.events.loc[(frameid, next(eid)), :] = [cat, oids.data[i], hids.data[j], dists[i, j]]
                 oids[i] = ma.masked
                 hids[j] = ma.masked
@@ -181,20 +187,21 @@ class MOTAccumulator(object):
         # 3. All remaining objects are missed
         for o in oids[~oids.mask]:
             self.events.loc[(frameid, next(eid)), :] = ['MISS', o, np.nan, np.nan]
+            FN[0]+=1
         
         # 4. All remaining hypotheses are false alarms
         for h in hids[~hids.mask]:
             self.events.loc[(frameid, next(eid)), :] = ['FP', np.nan, h, np.nan]
-
+            FP[0]+=1
         # 5. Update occurance state
         for o in oids.data:
             self.last_occurrence[o] = frameid
-
+        
         if frameid in self.events.index:
             return self.events.loc[frameid]
         else:
             return None
-
+        
     @staticmethod
     def new_event_dataframe():
         """Create a new DataFrame for event tracking."""

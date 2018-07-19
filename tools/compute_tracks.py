@@ -17,8 +17,11 @@ from __future__ import unicode_literals
 import argparse
 import sys
 
-from core.config import (
-    cfg_from_file, assert_and_infer_cfg, get_output_dir, cfg_from_list)
+import os.path as osp
+import os
+sys.path.insert(0, osp.join(os.getcwd(), 'lib'))
+
+from core.config import cfg_from_file, assert_and_infer_cfg, get_output_dir, cfg_from_list
 from core.tracking_engine import run_posetrack_tracking
 from core.test_engine import get_roidb_and_dataset
 

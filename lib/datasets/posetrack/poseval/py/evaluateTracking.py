@@ -11,7 +11,6 @@ sys.path.insert(
     0, 'lib/datasets/posetrack/poseval/py-motmetrics')
 import motmetrics as mm
 
-
 def process_frame(si, nJoints, seqidxs, seqidxsUniq, motAll, metricsMidNames):
     # create metrics
     mh = mm.metrics.create()
@@ -32,7 +31,11 @@ def process_frame(si, nJoints, seqidxs, seqidxsUniq, motAll, metricsMidNames):
     for j in range(len(imgidxs)):
         imgidx = imgidxs[j,0]
         # iterate over joints
+        FP=np.zeros((nJoints+1))
+        FN=np.zeros((nJoints+1))
+        IDSW=np.zeros((nJoints+1))
         for i in range(nJoints):
+            FP_i,FN_i,IDSW_i=[0],[0],[0]
             # GT tracking ID
             trackidxGT = motAll[imgidx][i]["trackidxGT"]
             # prediction tracking ID
@@ -44,9 +47,49 @@ def process_frame(si, nJoints, seqidxs, seqidxsUniq, motAll, metricsMidNames):
             accAll[i].update(
                 trackidxGT,  # Ground truth objects in this frame
                 trackidxPr,  # Detector hypotheses in this frame
-                dist  # Distances from objects to hypotheses
+                dist,  # Distances from objects to hypotheses
+                FP_i,
+                FN_i,
+                IDSW_i
             )
-
+            FP[i]=FP_i[0]
+            FN[i]=FN_i[0]
+            IDSW[i]=IDSW_i[0]
+        FP[nJoints]=FP.sum()
+        FN[nJoints]=FN.sum()
+        IDSW[nJoints]=IDSW.sum()
+        ######################## save fp,fn,idsw values #################
+        import re,os,json
+        from core.config import cfg
+#         print(motAll[imgidx][0])
+        tmp_dic={
+                    "FP":FP.tolist(),
+                    "FN":FN.tolist(),
+                    "IDSW":IDSW.tolist(),
+                    "gt_num":len(trackidxGT),
+                    "image_name":motAll[imgidx]["image_name"]
+#                     "image_name":motAll[imgidx]["image_name"]
+        }
+        gt_num_npy=np.full((nJoints+1),tmp_dic["gt_num"])
+        tmp_dic["mota_i"]=100*(  1-(FP+FN+IDSW)/  gt_num_npy).mean()
+        if True or tmp_dic["mota_i"]<0:
+            patt=r"2d_best/(.+?\.yaml)"
+            cfg_file=re.findall(patt,cfg.OUTPUT_DIR)[0]
+            
+            if cfg.TEST.OPTICAL_BBOX:
+                dir_path="tools/show_results/%s_optical_choice=%d_nms=%f_score=_%f"%(cfg_file,cfg.TEST.OPTICAL_CHOICE,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH)
+            else:
+                dir_path="tools/show_results/%s_nms=%f_score=_%f"%(cfg_file,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH)
+            if not os.path.exists(dir_path):
+                os.mkdir(dir_path)
+            dir_path+="/mid_mota"
+            if not os.path.exists(dir_path):
+                os.mkdir(dir_path)
+            f=open(dir_path+"/mid_mota_%s.json"%(tmp_dic["image_name"]).replace('/','\\'),"w")
+            f.write(json.dumps(tmp_dic))
+            f.flush()
+            f.close()
+        ######################## save fp,fn,idsw values #################
     # compute intermediate metrics per joint per sequence
     all_metricsMid = []
     for i in range(nJoints):
@@ -143,6 +186,8 @@ def evaluateTracking(gtFramesAll, prFramesAll, trackUpperBound):
         gtFramesAll, prFramesAll, distThresh, trackUpperBound)
 
     # compute MOT metrics per part
+    ###########jianbo comment this following line and add debug line
     metricsAll = computeMetrics(gtFramesAll, motAll)
-
+#     metricsAll =show_MOTA_each_frame(gtFramesAll, motAll)
+    ###########jianbo 
     return metricsAll

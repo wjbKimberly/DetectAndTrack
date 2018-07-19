@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 ##############################################################
 # Copyright (c) 2018-present, Facebook, Inc.
 # All rights reserved.
@@ -18,8 +19,12 @@ import cv2  # NOQA (Must import before importing caffe2 due to bug in cv2)
 from caffe2.python import workspace
 # Not used in this code
 # from core.rpn_generator import generate_rpn_on_range, generate_rpn_on_dataset
-from core.config import (cfg, cfg_from_file, cfg_from_list, assert_and_infer_cfg,
-                         get_output_dir)
+import sys
+import os.path as osp
+import os
+sys.path.insert(0, osp.join(os.getcwd(), 'lib'))
+
+from core.config import cfg, cfg_from_list, assert_and_infer_cfg, get_output_dir,cfg_from_file
 import utils.c2
 
 import argparse
@@ -53,7 +58,8 @@ def parse_args():
     parser.add_argument(
         '--range', dest='range',
         help='start (inclusive) and end (exclusive) indices',
-        default=None, type=int, nargs=2)
+        default=None,
+        type=int, nargs=2)
     parser.add_argument(
         'opts', help='See lib/core/config.py for all options', default=None,
         nargs=argparse.REMAINDER)

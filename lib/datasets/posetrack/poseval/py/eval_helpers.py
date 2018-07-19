@@ -382,6 +382,7 @@ def load_data_dir(argv):
     gt = data["annolist"]
     for imgidx in range(len(gt)):
         gt[imgidx]["seq_id"] = i
+        gt[imgidx]["image_name"] = gt[imgidx]["image"][0]["name"]
         for ridxGT in range(len(gt[imgidx]["annorect"])):
             if ("track_id" in gt[imgidx]["annorect"][ridxGT].keys()):
                 # adjust track_ids to make them unique across all sequences
@@ -465,6 +466,10 @@ def assignGTmulti(gtFrames, prFrames, distThresh, computeUpperBound=False):
         trackidxGT = []
         trackidxPr = []
         idxsPr = []
+        # by jianbo 
+        # Data clean process.
+        # It means idxPr contains all the valid people predicted by model,valid means they have annopoints and point key
+        
         for ridxPr in range(len(prFrames[imgidx]["annorect"])):
             if (("annopoints" in prFrames[imgidx]["annorect"][ridxPr].keys()) and
                 ("point" in prFrames[imgidx]["annorect"][ridxPr]["annopoints"][0].keys())):
@@ -476,6 +481,7 @@ def assignGTmulti(gtFrames, prFrames, distThresh, computeUpperBound=False):
         # iterate over GT poses
         for ridxGT in range(len(gtFrames[imgidx]["annorect"])):
             # GT pose
+            # for each person
             rectGT = gtFrames[imgidx]["annorect"][ridxGT]
             if ("track_id" in rectGT.keys()):
                 trackidxGT += [rectGT["track_id"][0]]
@@ -545,7 +551,8 @@ def assignGTmulti(gtFrames, prFrames, distThresh, computeUpperBound=False):
                 for j in range(hasGT.shape[0]):
                     if nGTp[j] > 0:
                         pck[i, j] = pck[i, j] / nGTp[j]
-
+                        
+            # for each predict answer , given only one GT match
             # preserve best GT match only
             idx = np.argmax(pck, axis=1)
             val = np.max(pck, axis=1)
@@ -553,6 +560,9 @@ def assignGTmulti(gtFrames, prFrames, distThresh, computeUpperBound=False):
                 for ridxGT in range(pck.shape[1]):
                     if (ridxGT != idx[ridxPr]):
                         pck[ridxPr, ridxGT] = 0
+            
+            # for each GT , given only one matched prediction
+            # in case that there does not exist matched prediction, given -1
             prToGT = np.argmax(pck, axis=0)
             val = np.max(pck, axis=0)
             prToGT[val == 0] = -1
@@ -571,12 +581,14 @@ def assignGTmulti(gtFrames, prFrames, distThresh, computeUpperBound=False):
                 prFrames[imgidx]["annorect"] = [prFrames[imgidx]["annorect"][ridx] for ridx in sel]
                 trackidxPr = [trackidxGT[el] for el in sel_pos]
                 prToGT[sel_pos] = np.arange(len(sel))
-
+            
+            
             # info to compute MOT metrics
             mot = {}
             for i in range(nJoints):
                 mot[i] = {}
-
+            
+            mot["image_name"]=gtFrames[imgidx]["image"][0]["name"]
             for i in range(nJoints):
                 ridxsGT = np.argwhere(hasGT[:,i] == True); ridxsGT = ridxsGT.flatten().tolist()
                 ridxsPr = np.argwhere(hasPr[:,i] == True); ridxsPr = ridxsPr.flatten().tolist()
@@ -589,7 +601,7 @@ def assignGTmulti(gtFrames, prFrames, distThresh, computeUpperBound=False):
                     for iGT in range(len(ridxsGT)):
                         if (match[ridxsPr[iPr], ridxsGT[iGT], i]):
                             mot[i]["dist"][iGT,iPr] = dist[ridxsPr[iPr], ridxsGT[iGT], i]
-
+            
             # assign predicted poses to GT poses
             for ridxPr in range(hasPr.shape[0]):
                 if (ridxPr in prToGT):  # pose matches to GT

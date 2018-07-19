@@ -281,8 +281,13 @@ __C.TEST.INIT_RANDOM_VARS_BEFORE_LOADING = False
 __C.TEST.EXT_CNN_FEATURES = False
 # Can be 'ImNet' or 'Places'
 __C.TEST.EXT_CNN_FEATURES_MODEL = b'ImNet'
-
-
+# use optical flow to propagete bbox
+__C.TEST.OPTICAL_BBOX=False
+# optical_choice=0 means using cv2 version, =1 means flownet2
+__C.TEST.OPTICAL_CHOICE=0
+__C.TEST.OPTICAL_MODEL_PATH=str()
+__C.TEST.NMS_OPTICAL=__C.TEST.NMS
+__C.TEST.DROP_OPTICAL_KPS_SCORE=0.0
 # ---------------------------------------------------------------------------- #
 # Model options
 # ---------------------------------------------------------------------------- #

@@ -792,4 +792,5 @@ def run_posetrack_tracking(test_output_dir, json_data):
     _write_det_file(dets_withTracks, out_det_file)
     dataset = JsonDataset(cfg.TEST.DATASET)
     if dataset.name.startswith('posetrack'):
-        run_mpii_eval(test_output_dir, json_data, dataset)
+        score_ap, score_mot,apAll, preAll, recAll, mota=run_mpii_eval(test_output_dir, json_data, dataset)
+        return score_ap, score_mot,apAll, preAll, recAll, mota 

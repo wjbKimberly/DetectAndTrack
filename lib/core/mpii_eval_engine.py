@@ -210,10 +210,10 @@ def _run_eval(annot_dir, output_dir, eval_tracking=False, eval_pose=True):
     Runs the evaluation, and returns the "total mAP" and "total MOTA"
     """
     from datasets.posetrack.poseval.py import evaluate_simple
-    (apAll, _, _), mota = evaluate_simple.evaluate(
+    (apAll, preAll, recAll), mota = evaluate_simple.evaluate(
         annot_dir, output_dir, eval_pose, eval_tracking,
         cfg.TRACKING.DEBUG.UPPER_BOUND_4_EVAL_UPPER_BOUND)
-    return apAll[-1][0], mota[-4][0]
+    return apAll[-1][0], mota[-4][0], apAll, preAll, recAll, mota
 
 
 def _run_eval_single_video(vname, out_filenames, output_dir, dataset, eval_tracking):
@@ -230,7 +230,7 @@ def _run_eval_single_video(vname, out_filenames, output_dir, dataset, eval_track
     shutil.copyfile(gt_path, osp.join(per_vid_tmp_dir, 'gt', voutname))
     shutil.copyfile(pred_path, osp.join(per_vid_tmp_dir, 'pred', voutname))
     try:
-        score_ap, score_mot = _run_eval(
+        score_ap, score_mot,apAll, preAll, recAll, mota = _run_eval(
             osp.join(per_vid_tmp_dir, 'gt/'),
             osp.join(per_vid_tmp_dir, 'pred/'),
             eval_tracking)
@@ -286,8 +286,11 @@ def _run_posetrack_eval(roidb, det_file, dataset, output_dir):
     logger.info('Wrote all predictions in JSON to {}'.format(output_dir))
     logger.info('Running dataset level evaluation...')
     st_time = time.time()
-    logger.info(_run_eval(dataset.annotation_directory, output_dir, eval_tracking))
-    logger.info('...Done in {}'.format(time.time() - st_time))
+    ####jianbo add this line and comment following two lines
+    score_ap, score_mot,apAll, preAll, recAll, mota=_run_eval(dataset.annotation_directory, output_dir, eval_tracking)
+#     logger.info(_run_eval(dataset.annotation_directory, output_dir, eval_tracking))
+#     logger.info('...Done in {}'.format(time.time() - st_time))
+    #####
     # TODO(rgirdhar): Do this better
     if cfg.EVAL.EVAL_MPII_PER_VIDEO:  # run the evaluation per-video
         res = []
@@ -312,7 +315,7 @@ def _run_posetrack_eval(roidb, det_file, dataset, output_dir):
         with open(pervid_outpath, 'w') as fout:
             for el in res:
                 fout.write('{} {} {}\n'.format(el[0], el[1], el[2]))
-
+    return score_ap, score_mot,apAll, preAll, recAll, mota
 
 def run_mpii_eval(test_output_dir, roidb, dataset):
     # Set include_gt True when using the roidb to evalute directly. Not doing
@@ -329,6 +332,7 @@ def run_mpii_eval(test_output_dir, roidb, dataset):
             continue
         ran_once = True
         logger.info('Evaluating {}'.format(file_path))
-        _run_posetrack_eval(roidb, file_path, dataset, json_out_dir)
+        score_ap, score_mot,apAll, preAll, recAll, mota=_run_posetrack_eval(roidb, file_path, dataset, json_out_dir)
     if not ran_once:
         logger.warning('No detection files found from {}'.format(all_det_files))
+    return score_ap, score_mot,apAll, preAll, recAll, mota
