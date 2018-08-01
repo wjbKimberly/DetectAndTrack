@@ -191,7 +191,6 @@ def test_net(ind_range=None):
             extend_results(i, all_segms, cls_segms_i)
         if cls_keyps_i is not None:
             extend_results(i, all_keyps, cls_keyps_i)
-
         if i % 10 == 0:  # Reduce log file size
             ave_total_time = np.sum([t.average_time for t in timers.values()])
             eta_seconds = ave_total_time * (num_images - i - 1)

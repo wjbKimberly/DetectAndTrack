@@ -91,6 +91,7 @@ def flip_heatmaps(heatmaps):
     return heatmaps_flipped
 
 
+# def heatmaps_to_keypoints(maps, rois,drop_conf_threshold):
 def heatmaps_to_keypoints(maps, rois):
     """Extracts predicted keypoint locations from heatmaps. Output has shape
     (#rois, 4, #keypoints) with the 4 rows corresponding to (x, y, logit, prob)
@@ -127,7 +128,7 @@ def heatmaps_to_keypoints(maps, rois):
         width_correction = widths[i] / roi_map_width
         height_correction = heights[i] / roi_map_height
         roi_map = cv2.resize(
-            maps[i], (roi_map_width, roi_map_height),
+            maps[i], (int(roi_map_width), int(roi_map_height)),
             interpolation=cv2.INTER_CUBIC)
         # Bring back to CHW
         roi_map = np.transpose(roi_map, [2, 0, 1])

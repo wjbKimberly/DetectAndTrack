@@ -421,6 +421,237 @@ def writeJson(val,fname):
     json.dump(val, data_file)
 
 
+def assignGT_pr_sub_one_multi(gtFrames, prFrames, distThresh, computeUpperBound=False):
+    assert (len(gtFrames) == len(prFrames))
+
+    nJoints = Joint().count
+    # part detection scores
+    scoresAll = {}
+    # positive / negative labels
+    labelsAll = {}
+    # number of annotated GT joints per image
+    nGTall = np.zeros([nJoints, len(gtFrames)])
+    for pidx in range(nJoints):
+        scoresAll[pidx] = {}
+        labelsAll[pidx] = {}
+        for imgidx in range(len(gtFrames)):
+            scoresAll[pidx][imgidx] = np.zeros([0, 0], dtype=np.float32)
+            labelsAll[pidx][imgidx] = np.zeros([0, 0], dtype=np.int8)
+
+    # GT track IDs
+    trackidxGT = []
+
+    # prediction track IDs
+    trackidxPr = []
+
+    # number of GT poses
+    nGTPeople = np.zeros((len(gtFrames), 1))
+    # number of predicted poses
+    nPrPeople = np.zeros((len(gtFrames), 1))
+
+    # container to save info for computing MOT metrics
+    motAll = {}
+
+    for imgidx in range(len(gtFrames)):
+        if imgidx==0:
+            continue
+        imgidx_pre=imgidx-1
+        # distance between predicted and GT joints
+        dist = np.full((len(prFrames[imgidx_pre]["annorect"]), len(gtFrames[imgidx]["annorect"]), nJoints), np.inf)
+        # score of the predicted joint
+        score = np.full((len(prFrames[imgidx_pre]["annorect"]), nJoints), np.nan)
+        # body joint prediction exist
+        hasPr = np.zeros((len(prFrames[imgidx_pre]["annorect"]), nJoints), dtype=bool)
+        # body joint is annotated
+        hasGT = np.zeros((len(gtFrames[imgidx]["annorect"]), nJoints), dtype=bool)
+
+        trackidxGT = []
+        trackidxPr = []
+        idxsPr = []
+        # by jianbo 
+        # Data clean process.
+        # It means idxPr contains all the valid people predicted by model,valid means they have annopoints and point key
+        
+        for ridxPr in range(len(prFrames[imgidx_pre]["annorect"])):
+            if (("annopoints" in prFrames[imgidx_pre]["annorect"][ridxPr].keys()) and
+                ("point" in prFrames[imgidx_pre]["annorect"][ridxPr]["annopoints"][0].keys())):
+                idxsPr += [ridxPr];
+        prFrames[imgidx_pre]["annorect"] = [prFrames[imgidx_pre]["annorect"][ridx] for ridx in idxsPr]
+
+        nPrPeople[imgidx_pre, 0] = len(prFrames[imgidx_pre]["annorect"])
+        nGTPeople[imgidx, 0] = len(gtFrames[imgidx]["annorect"])
+        # iterate over GT poses
+        for ridxGT in range(len(gtFrames[imgidx]["annorect"])):
+            # GT pose
+            # for each person
+            rectGT = gtFrames[imgidx]["annorect"][ridxGT]
+            if ("track_id" in rectGT.keys()):
+                trackidxGT += [rectGT["track_id"][0]]
+            pointsGT = []
+            if len(rectGT["annopoints"]) > 0:
+                pointsGT = rectGT["annopoints"][0]["point"]
+            # iterate over all possible body joints
+            for i in range(nJoints):
+                # GT joint in LSP format
+                ppGT = getPointGTbyID(pointsGT, i)
+                if len(ppGT) > 0:
+                    hasGT[ridxGT, i] = True
+
+        # iterate over predicted poses
+        for ridxPr in range(len(prFrames[imgidx_pre]["annorect"])):
+            # predicted pose
+            rectPr = prFrames[imgidx_pre]["annorect"][ridxPr]
+            if ("track_id" in rectPr.keys()):
+                trackidxPr += [rectPr["track_id"][0]]
+            pointsPr = rectPr["annopoints"][0]["point"]
+            for i in range(nJoints):
+                # predicted joint in LSP format
+                ppPr = getPointGTbyID(pointsPr, i)
+                if len(ppPr) > 0:
+                    assert("score" in ppPr.keys() and "keypoint score is missing")
+                    score[ridxPr, i] = ppPr["score"][0]
+                    hasPr[ridxPr, i] = True
+
+        if len(prFrames[imgidx_pre]["annorect"]) and len(gtFrames[imgidx]["annorect"]):
+            # predictions and GT are present
+            # iterate over GT poses
+            for ridxGT in range(len(gtFrames[imgidx]["annorect"])):
+                # GT pose
+                rectGT = gtFrames[imgidx]["annorect"][ridxGT]
+                # compute reference distance as head size
+                headSize = getHeadSize(rectGT["x1"][0], rectGT["y1"][0],
+                                                    rectGT["x2"][0], rectGT["y2"][0])
+                pointsGT = []
+                if len(rectGT["annopoints"]) > 0:
+                    pointsGT = rectGT["annopoints"][0]["point"]
+                # iterate over predicted poses
+                for ridxPr in range(len(prFrames[imgidx_pre]["annorect"])):
+                    # predicted pose
+                    rectPr = prFrames[imgidx_pre]["annorect"][ridxPr]
+                    pointsPr = rectPr["annopoints"][0]["point"]
+
+                    # iterate over all possible body joints
+                    for i in range(nJoints):
+                        # GT joint
+                        ppGT = getPointGTbyID(pointsGT, i)
+                        # predicted joint
+                        ppPr = getPointGTbyID(pointsPr, i)
+                        # compute distance between predicted and GT joint locations
+                        if hasPr[ridxPr, i] and hasGT[ridxGT, i]:
+                            pointGT = [ppGT["x"][0], ppGT["y"][0]]
+                            pointPr = [ppPr["x"][0], ppPr["y"][0]]
+                            dist[ridxPr, ridxGT, i] = np.linalg.norm(np.subtract(pointGT, pointPr)) / headSize
+
+            dist = np.array(dist)
+            hasGT = np.array(hasGT)
+
+            # number of annotated joints
+            nGTp = np.sum(hasGT, axis=1)
+            match = dist <= distThresh
+            pck = 1.0 * np.sum(match, axis=2)
+            for i in range(hasPr.shape[0]):
+                for j in range(hasGT.shape[0]):
+                    if nGTp[j] > 0:
+                        pck[i, j] = pck[i, j] / nGTp[j]
+                        
+            # for each predict answer , given only one GT match
+            # preserve best GT match only
+            idx = np.argmax(pck, axis=1)
+            val = np.max(pck, axis=1)
+            for ridxPr in range(pck.shape[0]):
+                for ridxGT in range(pck.shape[1]):
+                    if (ridxGT != idx[ridxPr]):
+                        pck[ridxPr, ridxGT] = 0
+            
+            # for each GT , given only one matched prediction
+            # in case that there does not exist matched prediction, given -1
+            prToGT = np.argmax(pck, axis=0)
+            val = np.max(pck, axis=0)
+            prToGT[val == 0] = -1
+            if computeUpperBound:
+                # Debug
+                sel = prToGT[prToGT > -1]  # ids of what got selected
+                sel_pos = np.where(prToGT > -1)[0]
+                # remove unmatched stuff
+                dist = dist[sel, :, :]
+                match = match[sel, :, :]
+                score = score[sel]
+                hasPr = hasPr[sel]
+                trackidxPr = [trackidxPr[el] for el in sel]
+                # idxsPr = [idxsPr[el] for el in sel]
+                nPrPeople[imgidx, :] = len(sel)
+                prFrames[imgidx_pre]["annorect"] = [prFrames[imgidx]["annorect"][ridx] for ridx in sel]
+                trackidxPr = [trackidxGT[el] for el in sel_pos]
+                prToGT[sel_pos] = np.arange(len(sel))
+            
+            
+            # info to compute MOT metrics
+            mot = {}
+            for i in range(nJoints):
+                mot[i] = {}
+            
+            mot["image_name"]=gtFrames[imgidx]["image"][0]["name"]
+            for i in range(nJoints):
+                ridxsGT = np.argwhere(hasGT[:,i] == True); ridxsGT = ridxsGT.flatten().tolist()
+                ridxsPr = np.argwhere(hasPr[:,i] == True); ridxsPr = ridxsPr.flatten().tolist()
+                mot[i]["trackidxGT"] = [trackidxGT[idx] for idx in ridxsGT]
+                mot[i]["trackidxPr"] = [trackidxPr[idx] for idx in ridxsPr]
+                mot[i]["ridxsGT"] = np.array(ridxsGT)
+                mot[i]["ridxsPr"] = np.array(ridxsPr)
+                mot[i]["dist"] = np.full((len(ridxsGT),len(ridxsPr)),np.nan)
+                for iPr in range(len(ridxsPr)):
+                    for iGT in range(len(ridxsGT)):
+                        if (match[ridxsPr[iPr], ridxsGT[iGT], i]):
+                            mot[i]["dist"][iGT,iPr] = dist[ridxsPr[iPr], ridxsGT[iGT], i]
+            
+            # assign predicted poses to GT poses
+            for ridxPr in range(hasPr.shape[0]):
+                if (ridxPr in prToGT):  # pose matches to GT
+                    # GT pose that matches the predicted pose
+                    ridxGT = np.argwhere(prToGT == ridxPr)
+                    assert(ridxGT.size == 1)
+                    ridxGT = ridxGT[0,0]
+                    s = score[ridxPr, :]
+                    m = np.squeeze(match[ridxPr, ridxGT, :])
+                    hp = hasPr[ridxPr, :]
+                    for i in range(len(hp)):
+                        if (hp[i]):
+                            scoresAll[i][imgidx] = np.append(scoresAll[i][imgidx], s[i])
+                            labelsAll[i][imgidx] = np.append(labelsAll[i][imgidx], m[i])
+
+                else:  # no matching to GT
+                    s = score[ridxPr, :]
+                    m = np.zeros([match.shape[2], 1], dtype=bool)
+                    hp = hasPr[ridxPr, :]
+                    for i in range(len(hp)):
+                        if (hp[i]):
+                            scoresAll[i][imgidx] = np.append(scoresAll[i][imgidx], s[i])
+                            labelsAll[i][imgidx] = np.append(labelsAll[i][imgidx], m[i])
+        else:
+            if not len(gtFrames[imgidx]["annorect"]):
+                # No GT available. All predictions are false positives
+                for ridxPr in range(hasPr.shape[0]):
+                    s = score[ridxPr, :]
+                    m = np.zeros([nJoints, 1], dtype=bool)
+                    hp = hasPr[ridxPr, :]
+                    for i in range(len(hp)):
+                        if hp[i]:
+                            scoresAll[i][imgidx] = np.append(scoresAll[i][imgidx], s[i])
+                            labelsAll[i][imgidx] = np.append(labelsAll[i][imgidx], m[i])
+
+        # save number of GT joints
+        for ridxGT in range(hasGT.shape[0]):
+            hg = hasGT[ridxGT, :]
+            for i in range(len(hg)):
+                nGTall[i, imgidx] += hg[i]
+
+        if 'mot' in locals():
+            motAll[imgidx] = mot
+
+    return scoresAll, labelsAll, nGTall, motAll
+
+    
+    
 def assignGTmulti(gtFrames, prFrames, distThresh, computeUpperBound=False):
     assert (len(gtFrames) == len(prFrames))
 

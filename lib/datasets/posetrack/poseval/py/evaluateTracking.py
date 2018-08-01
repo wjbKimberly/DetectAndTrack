@@ -11,7 +11,79 @@ sys.path.insert(
     0, 'lib/datasets/posetrack/poseval/py-motmetrics')
 import motmetrics as mm
 
-def process_frame(si, nJoints, seqidxs, seqidxsUniq, motAll, metricsMidNames):
+def get_kps_dic(FramesAll,imgidx,FN_kps,FN_kps_indx_i,joint_indx):
+    for person_id in range(len(FramesAll[imgidx]["annorect"])):
+        person_i=FramesAll[imgidx]["annorect"][person_id]
+        person_i_kps=person_i["annopoints"][0]["point"]
+        for FN_pi in FN_kps_indx_i:
+            if FN_pi==person_i["track_id"][0]:
+                
+                if not (FN_pi in FN_kps.keys() ):
+                    FN_kps[FN_pi]=[]
+                for kps_i in person_i_kps:
+                    if kps_i["id"][0]==joint_indx:
+                        FN_kps[FN_pi].append([kps_i["x"][0],kps_i["y"][0],joint_indx])
+                        break
+                        
+def get_kps_anno(gtFramesAll,imgidx,person_index_list,gt_person_dic,joint_indx,flag0=False):
+    
+    for person_id in range(len(gtFramesAll[imgidx]["annorect"])):
+        person_i=gtFramesAll[imgidx]["annorect"][person_id]
+        person_i_kps=person_i["annopoints"][0]["point"]
+        person_id=person_i["track_id"][0]
+#         if flag0 and "20880" in gtFramesAll[imgidx]["image"][0]["name"] and "0001.jpg" in gtFramesAll[imgidx]["image"][0]["name"]:
+#             print(len(gtFramesAll[imgidx]["annorect"]),person_id,person_index_list)
+#         if (not flag0) and "20880" in gtFramesAll[imgidx]["image"] and "0001.jpg" in gtFramesAll[imgidx]["image"]:
+#             print(person_id,person_index_list)
+        if person_id in person_index_list:
+            if not (person_id in gt_person_dic.keys() ):
+                gt_person_dic[person_id]=[]
+            for kps_i in person_i_kps:
+                if kps_i["id"][0]==joint_indx:
+                    gt_person_dic[person_id].append([kps_i["x"][0],kps_i["y"][0],joint_indx])
+                    break                  
+def get_gt_pre_dics(gtFramesAll,prFramesAll,imgidx,match_gp_pair):
+    
+    gt_person_dic={}
+    pre_person_dic={}
+    for joint_indx in range(len(match_gp_pair)):
+        pre_index=[]
+        for gt_i in match_gp_pair[joint_indx].keys():
+            pre_index.append(match_gp_pair[joint_indx][gt_i])
+        get_kps_anno(gtFramesAll,imgidx,match_gp_pair[joint_indx].keys(),gt_person_dic,joint_indx,True)
+        get_kps_anno(prFramesAll,imgidx,pre_index,pre_person_dic,joint_indx,False)
+    return gt_person_dic,pre_person_dic
+
+# given kps_index, find its coordinates                       
+def get_kps_i(FramesAll,imgidx,kps_indx_i,joint_indx,gt_flag=False):
+    
+    for person_id in range(len(FramesAll[imgidx]["annorect"])):
+        person_i=FramesAll[imgidx]["annorect"][person_id]
+        person_i_kps=person_i["annopoints"][0]["point"]
+        if kps_indx_i==person_i["track_id"][0]:
+            for kps_i in person_i_kps:
+                if kps_i["id"][0]==joint_indx:
+                    if gt_flag:
+                        head_coordinate=[person_i["x1"][0],person_i["y1"][0],person_i["x2"][0],person_i["y2"][0]]
+                        return [kps_i["x"][0],kps_i["y"][0]],head_coordinate
+                    else:
+                        return [kps_i["x"][0],kps_i["y"][0]]
+
+def get_dis_i_j(gtFramesAll,prFramesAll,imgidx,joint_indx,FN_match_exc_thre_i):
+    from eval_helpers import getHeadSize 
+    for i,pair_i in enumerate(FN_match_exc_thre_i):
+        gt_i=pair_i["gt"]
+        pred_i=pair_i["predict"]
+        pointGT,head_coordinate=get_kps_i(gtFramesAll,imgidx,gt_i,joint_indx,gt_flag=True)
+        pointPr=get_kps_i(prFramesAll,imgidx,pred_i,joint_indx) 
+        headSize = getHeadSize(head_coordinate[0],head_coordinate[1],head_coordinate[2],head_coordinate[3])
+        dist_i_j = np.linalg.norm(np.subtract(pointGT, pointPr)) / headSize
+        FN_match_exc_thre_i[i]["gt"]={"x":pointGT[0],"y":pointGT[1],"id":joint_indx,"head_size":headSize }
+        FN_match_exc_thre_i[i]["predict"]={"x":pointPr[0],"y":pointPr[1],"id":joint_indx}
+        FN_match_exc_thre_i[i]["dis"]=dist_i_j 
+    return FN_match_exc_thre_i
+
+def process_frame(si, nJoints, seqidxs, seqidxsUniq, motAll, metricsMidNames,gtFramesAll,prFramesAll):
     # create metrics
     mh = mm.metrics.create()
     print("seqidx: %d" % (si+1))
@@ -34,11 +106,15 @@ def process_frame(si, nJoints, seqidxs, seqidxsUniq, motAll, metricsMidNames):
         FP=np.zeros((nJoints+1))
         FN=np.zeros((nJoints+1))
         FN_unmatch_curr=np.zeros((nJoints+1))
-        Match_exce_thre=np.zeros((nJoints+1))
+        FN_match_exc_thre=[]
+        FN_kps={}
+        FP_kps={}
+        match_gp_pair=[]
         IDSW=np.zeros((nJoints+1))
-        gt_num=0
+        gt_num=np.zeros((nJoints+1))
+        
         for i in range(nJoints):
-            FP_i,FN_i,FN_unmatch_curr_i,Match_exce_thre_i,IDSW_i=[0],[0],[0],[0],[0]
+            FP_i,FN_i,FN_unmatch_curr_i,FN_match_exc_thre_i,FN_kps_indx_i,FP_kps_indx_i,match_gp_pair_i,IDSW_i=[0],[0],[0],[0],[[]],[[]],{},[0]
             # GT tracking ID
             trackidxGT = motAll[imgidx][i]["trackidxGT"]
             # prediction tracking ID
@@ -47,6 +123,7 @@ def process_frame(si, nJoints, seqidxs, seqidxsUniq, motAll, metricsMidNames):
             # 'NaN' means force no match
             dist = motAll[imgidx][i]["dist"]
             # Call update once per frame
+            
             accAll[i].update(
                 trackidxGT,  # Ground truth objects in this frame
                 trackidxPr,  # Detector hypotheses in this frame
@@ -54,36 +131,53 @@ def process_frame(si, nJoints, seqidxs, seqidxsUniq, motAll, metricsMidNames):
                 FP_i,
                 FN_i,
                 FN_unmatch_curr_i,
-                Match_exce_thre_i,
-                IDSW_i
+                FN_match_exc_thre_i,
+                FN_kps_indx_i,
+                FP_kps_indx_i,
+                match_gp_pair_i,
+                IDSW_i,
             )
             FP[i]=FP_i[0]
             FN[i]=FN_i[0]
-            FN_unmatch_curr_i=FN_unmatch_curr_i[0]
-            Match_exce_thre_i=Match_exce_thre_i[0]
+            FN_unmatch_curr[i]=FN_unmatch_curr_i[0]
+            FN_match_exc_thre.append( get_dis_i_j(gtFramesAll,prFramesAll,imgidx,i,FN_match_exc_thre_i[0]) )
             IDSW[i]=IDSW_i[0]
-            gt_num+=len(trackidxGT)
+            gt_num[i]=len(trackidxGT)
+            
+            ############ for FN
+            get_kps_dic(gtFramesAll,imgidx,FN_kps,FN_kps_indx_i[0],i)
+            get_kps_dic(prFramesAll,imgidx,FP_kps,FP_kps_indx_i[0],i)
+            
+            match_gp_pair.append(match_gp_pair_i)
+            
         FP[nJoints]=FP.sum()
         FN[nJoints]=FN.sum()
         FN_unmatch_curr[nJoints]=FN_unmatch_curr.sum()
-        Match_exce_thre[nJoints]=Match_exce_thre.sum()
+        FN_match_exc_thre.append(0)
+        for i in range(nJoints):
+            FN_match_exc_thre[nJoints]+=len(FN_match_exc_thre[i])
         IDSW[nJoints]=IDSW.sum()
+        gt_num[nJoints]=gt_num.sum()
+        gt_person_dic,pre_person_dic=get_gt_pre_dics(gtFramesAll,prFramesAll,imgidx,match_gp_pair)
         ######################## save fp,fn,idsw values #################
         import re,os,json
         from core.config import get_log_dir_path
-#         print(motAll[imgidx][0])
+        
         tmp_dic={
                     "FP":FP.tolist(),
                     "FN":FN.tolist(),
                     "FN_unmatch_curr":FN_unmatch_curr.tolist(),
-                    "Match_exce_thre":Match_exce_thre.tolist(),
+                    "FN_match_exc_thre":FN_match_exc_thre,
+                    "FN_kps":FN_kps,
+                    "FP_kps":FP_kps,
+                    "match_gp_pair":match_gp_pair,
+                    "gt_person_dic":gt_person_dic,
+                    "pre_person_dic":pre_person_dic,
                     "IDSW":IDSW.tolist(),
-                    "gt_num":gt_num,
+                    "gt_num":gt_num.tolist(),
                     "image_name":motAll[imgidx]["image_name"]
-#                     "image_name":motAll[imgidx]["image_name"]
         }
-        gt_num_npy=np.full((nJoints+1),tmp_dic["gt_num"])
-        tmp_dic["mota_i"]=100*(  1-(FP+FN+IDSW)/  gt_num_npy).mean()
+        tmp_dic["mota_i"]=(100*(  1-(FP+FN+IDSW)/  gt_num) ).tolist()
         if True or tmp_dic["mota_i"]<0:
             dir_path=get_log_dir_path()
             if not os.path.exists(dir_path):
@@ -97,6 +191,7 @@ def process_frame(si, nJoints, seqidxs, seqidxsUniq, motAll, metricsMidNames):
             f.close()
         ######################## save fp,fn,idsw values #################
     # compute intermediate metrics per joint per sequence
+    
     all_metricsMid = []
     for i in range(nJoints):
         all_metricsMid.append(
@@ -105,7 +200,7 @@ def process_frame(si, nJoints, seqidxs, seqidxsUniq, motAll, metricsMidNames):
     return all_metricsMid, accAll
 
 
-def computeMetrics(gtFramesAll, motAll):
+def computeMetrics(gtFramesAll, prFramesAll,motAll):
 
     assert(len(gtFramesAll) == len(motAll))
 
@@ -144,7 +239,8 @@ def computeMetrics(gtFramesAll, motAll):
     res_all_metricsMid = pool.map(partial(
         process_frame,
         nJoints=nJoints, seqidxs=seqidxs, seqidxsUniq=seqidxsUniq,
-        motAll=motAll, metricsMidNames=metricsMidNames), range(nSeq))
+        motAll=motAll, metricsMidNames=metricsMidNames,gtFramesAll=gtFramesAll,prFramesAll=prFramesAll), range(nSeq))
+    
     for si in range(nSeq):
         # compute intermediate metrics per joint per sequence
         all_metricsMid, accAll = res_all_metricsMid[si]
@@ -188,12 +284,13 @@ def evaluateTracking(gtFramesAll, prFramesAll, trackUpperBound):
 
     distThresh = 0.5
     # assign predicted poses to GT poses
-    _, _, _, motAll = eval_helpers.assignGTmulti(
+#     _, _, _, motAll = eval_helpers.assignGTmulti(
+#         gtFramesAll, prFramesAll, distThresh, trackUpperBound)
+    _, _, _, motAll = eval_helpers.assignGT_pr_sub_one_multi(
         gtFramesAll, prFramesAll, distThresh, trackUpperBound)
 
     # compute MOT metrics per part
-    ###########jianbo comment this following line and add debug line
-    metricsAll = computeMetrics(gtFramesAll, motAll)
-#     metricsAll =show_MOTA_each_frame(gtFramesAll, motAll)
+    ###########jianbo 
+    metricsAll = computeMetrics(gtFramesAll, prFramesAll,motAll)
     ###########jianbo 
     return metricsAll

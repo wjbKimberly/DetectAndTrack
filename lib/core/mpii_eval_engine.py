@@ -110,6 +110,13 @@ def coco2posetrack(preds, src_kps, dst_kps, global_score,
             ind = src_kps.index(dst_kps[k])
             local_score = (preds[2, ind] + preds[2, ind]) / 2.0
             conf = _compute_score(local_score, global_score)
+            ##################### jianbo add##################
+            # preds[2, ind] indicates the heatmap value for that joints, 
+            # preds[3, ind] indicates the probability
+            kps_proba=preds[3, ind]
+            if kps_proba<cfg.EVAL.DROP_KPS_SCORE:
+                continue
+            ##################################################
             if local_score >= cfg.EVAL.EVAL_MPII_KPT_THRESHOLD:
                 data.append({'id': [k],
                              'x': [float(preds[0, ind])],
@@ -282,7 +289,8 @@ def _run_posetrack_eval(roidb, det_file, dataset, output_dir):
         outfpath = osp.join(
             output_dir, out_filenames[osp.join('images', vname)])
         with open(outfpath, 'w') as fout:
-            json.dump({'annolist': vdata}, fout)
+            json.dump({'annolist': vdata}, fout, indent=4)
+            
     logger.info('Wrote all predictions in JSON to {}'.format(output_dir))
     logger.info('Running dataset level evaluation...')
     st_time = time.time()

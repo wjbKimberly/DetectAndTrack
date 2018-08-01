@@ -284,7 +284,7 @@ __C.TEST.EXT_CNN_FEATURES_MODEL = b'ImNet'
 ################### add by jianbo #####################
 # use optical flow to propagete bbox
 __C.TEST.OPTICAL_BBOX=False
-# optical_choice=0 means using cv2 version, =1 means flownet2
+# optical_choice=0 means using cv2 version, =1 means flownet2,=2 means zero
 __C.TEST.OPTICAL_CHOICE=0
 # flownet2 model path
 __C.TEST.OPTICAL_MODEL_PATH=str()
@@ -294,6 +294,14 @@ __C.TEST.NMS_OPTICAL=__C.TEST.NMS
 __C.TEST.DROP_OPTICAL_KPS_SCORE=0.0
 # when use our own nms operation, force the number of bboxes added by optical, it is a ratio
 __C.TEST.FORCE_ADD_OPTICAL=0.0
+# expand box by some extend (15% in experiments) as the opt_flow propagated box
+__C.TEST.EXTEND_OPT_BBOX=1.0
+
+
+# delete opical bbox by OKS simlarity
+__C.TEST.DEL_OPT_BBOX_OKS=0.0
+# use oks_based_nms instead of naive nms to combine optical bbox and detected bbox
+__C.TEST.OPT_OKS_NMS=False
 ################### add by jianbo #####################
 # ---------------------------------------------------------------------------- #
 # Model options
@@ -663,6 +671,11 @@ __C.EVAL.EVAL_MPII_DROP_DETECTION_THRESHOLD = 0.5
 # default I put in every single keypoint
 __C.EVAL.EVAL_MPII_KPT_THRESHOLD = -float('Inf')
 
+
+################### add by jianbo #####################
+__C.EVAL.DROP_KPS_SCORE=0.0
+################### add by jianbo #####################
+
 # ---------------------------------------------------------------------------- #
 # Misc options
 # ---------------------------------------------------------------------------- #
@@ -790,7 +803,12 @@ def get_output_dir(training=True):
     dataset = __C.TRAIN.DATASET if training else __C.TEST.DATASET
     tag = 'train' if training else 'test'
     # <output-dir>/<train|test>/<dataset>/<model-type>/
-    outdir = osp.join(__C.OUTPUT_DIR, tag, dataset, __C.MODEL.TYPE)
+    
+    #################jianbo add############################
+    dir_path=get_log_dir_path()
+    outdir = osp.join(dir_path, tag, dataset, __C.MODEL.TYPE)
+    #################jianbo add############################
+#     outdir = osp.join(__C.OUTPUT_DIR, tag, dataset, __C.MODEL.TYPE)
     if not osp.exists(outdir):
         os.makedirs(outdir)
     return outdir
@@ -916,7 +934,8 @@ def get_log_dir_path():
     patt=r"2d_best/(.+?\.yaml)"
     cfg_file=re.findall(patt,cfg.OUTPUT_DIR)[0]
     if cfg.TEST.OPTICAL_BBOX:
-        dir_path="tools/show_results/%s_optical_choice=%d_nms=%f_score=%f_drop_optical_kps=%f_nms_opt=%f_force_opt_bbox=%f"%(cfg_file,cfg.TEST.OPTICAL_CHOICE,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH,cfg.TEST.DROP_OPTICAL_KPS_SCORE,cfg.TEST.NMS_OPTICAL,cfg.TEST.FORCE_ADD_OPTICAL)
+        dir_path="tools/show_results/%s_optical_choice=%d_nms=%f_score=_%f_drop_low_conf=%f_del_opt_thre=%f_use_oks_nms=%d"%(cfg_file,cfg.TEST.OPTICAL_CHOICE,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH,cfg.TRACKING.CONF_FILTER_INITIAL_DETS,cfg.TEST.DEL_OPT_BBOX_OKS,cfg.TEST.OPT_OKS_NMS)
+#          dir_path="tools/show_results/%s_optical_choice=%d_nms=%f_score=%f_extend_opt_bbox=%f_nms_opt=%f_force_opt_bbox=%f_drop_kps_score=%f"%(cfg_file,cfg.TEST.OPTICAL_CHOICE,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH,cfg.TEST.EXTEND_OPT_BBOX,cfg.TEST.NMS_OPTICAL,cfg.TEST.FORCE_ADD_OPTICAL,cfg.EVAL.DROP_KPS_SCORE)
     else:
-        dir_path="tools/show_results/%s_nms=%f_score=_%f"%(cfg_file,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH)
+        dir_path="tools/show_results/%s_nms=%f_score=_%f_drop_low_conf=%f_pr_sub_one"%(cfg_file,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH,cfg.TRACKING.CONF_FILTER_INITIAL_DETS)
     return dir_path

@@ -87,7 +87,7 @@ class MOTAccumulator(object):
         self.m = {} # Pairings up to current timestamp  
         self.last_occurrence = {} # Tracks most recent occurance of object
 
-    def update(self, oids, hids, dists, FP,FN,FN_unmatch_curr,Match_exce_thre,IDSW,frameid=None):
+    def update(self, oids, hids, dists, FP,FN,FN_unmatch_curr,FN_match_exc_thre,FN_kps_indx,FP_kps_indx,match_gp_pair_i,IDSW,frameid=None):
         """Updates the accumulator with frame specific objects/detections.
 
         This method generates events based on the following algorithm [1]:
@@ -130,7 +130,7 @@ class MOTAccumulator(object):
         oids = ma.array(oids, mask=np.zeros(len(oids)))
         hids = ma.array(hids, mask=np.zeros(len(hids)))  
         dists = np.atleast_2d(dists).astype(float).reshape(oids.shape[0], hids.shape[0])
-
+        
         if frameid is None:            
             assert self.auto_id, 'auto-id is not enabled'
             frameid = self.events.index.get_level_values(0).unique().shape[0]   
@@ -139,7 +139,10 @@ class MOTAccumulator(object):
         
         eid = count()
         dists, INVDIST = self._sanitize_dists(dists)
-
+        #############jianbo add############
+        FN_match_exc_thre[0]=[]
+        #############jianbo add############
+        
         if oids.size * hids.size > 0:        
             # 1. Try to re-establish tracks from previous correspondences
             for i in range(oids.shape[0]):
@@ -151,8 +154,9 @@ class MOTAccumulator(object):
                 if j.shape[0] == 0:
                     continue
                 j = j[0]
-
+                
                 if not dists[i, j] == INVDIST:
+                    match_gp_pair_i[oids[i]]=hids[j]
                     oids[i] = ma.masked
                     hids[j] = ma.masked
                     self.m[oids.data[i]] = hids.data[j]
@@ -160,19 +164,24 @@ class MOTAccumulator(object):
                 #############jianbo add############
                 # o and h are matched in the last frame but their distance in current frame is larger than threshold 
                 else:
-                    FN_unmatch_curr+=1
+                    FN_unmatch_curr[0]+=1
                 #############jianbo add############
                     
             # 2. Try to remaining objects/hypotheses
             dists[oids.mask, :] = INVDIST
             dists[:, hids.mask] = INVDIST
-        
+            
             rids, cids = linear_sum_assignment(dists)
-            for i, j in zip(rids, cids):                
+            
+            for i, j in zip(rids, cids):  
                 if dists[i, j] == INVDIST:
                 #############jianbo add############
-                # for this gt, it find a matched hypothesis but the distance exceed the threshold
-                    Match_exce_thre+=1
+                    matched_flag=bool(oids.mask[i]) or bool(hids.mask[j])
+                    if not matched_flag:
+                        FN_match_exc_thre[0].append({"gt":oids[i],
+                                                     "predict":hids[j],
+                                                     "dis":dists[i, j]
+                                                    })
                 #############jianbo add############
                     continue
                 
@@ -184,23 +193,29 @@ class MOTAccumulator(object):
                 cat = 'SWITCH' if is_switch else 'MATCH'
                 
                 #############jianbo add############
+                if cat=="MATCH":
+                    match_gp_pair_i[oids[i]]=hids[j]
+                # it is th
                 if is_switch:
                     IDSW[0]+=1
                 #############jianbo add############
-                                
+                
                 self.events.loc[(frameid, next(eid)), :] = [cat, oids.data[i], hids.data[j], dists[i, j]]
                 oids[i] = ma.masked
                 hids[j] = ma.masked
                 self.m[o] = h
-
+                
+#         FN_match_exc_thre[0]=len([ki for ki in exceed_thre_match.keys() if exceed_thre_match[ki]!=0])
         # 3. All remaining objects are missed
         for o in oids[~oids.mask]:
             self.events.loc[(frameid, next(eid)), :] = ['MISS', o, np.nan, np.nan]
+            FN_kps_indx[0].append(o)
             FN[0]+=1
-        
+            
         # 4. All remaining hypotheses are false alarms
         for h in hids[~hids.mask]:
             self.events.loc[(frameid, next(eid)), :] = ['FP', np.nan, h, np.nan]
+            FP_kps_indx[0].append(h)
             FP[0]+=1
         # 5. Update occurance state
         for o in oids.data:
