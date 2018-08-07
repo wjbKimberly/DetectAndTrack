@@ -47,8 +47,8 @@ def _run_cmd(tool_file, cfg_file, other_opts):
 def main():
     args = parse_args()
     other_opts = ''
-#     if args.mode in ['train', 'test']:
-#         other_opts += '--multi-gpu-testing '
+    if args.mode in ['train', 'test']:
+        other_opts += '--multi-gpu-testing '
     other_opts += 'OUTPUT_DIR outputs/{}  '.format(
         args.cfg_file)
     if args.opts is not None:
