@@ -56,11 +56,12 @@ def get_gt_pre_dics(gtFramesAll,prFramesAll,imgidx,match_gp_pair):
 
 # given kps_index, find its coordinates                       
 def get_kps_i(FramesAll,imgidx,kps_indx_i,joint_indx,gt_flag=False):
-    
+    trackid=[]
     for person_id in range(len(FramesAll[imgidx]["annorect"])):
         person_i=FramesAll[imgidx]["annorect"][person_id]
-        print("personid:",person_id)
         person_i_kps=person_i["annopoints"][0]["point"]
+#         print(person_i["track_id"])
+        trackid.append(person_i["track_id"][0])
         if kps_indx_i==person_i["track_id"][0]:
             for kps_i in person_i_kps:
                 if kps_i["id"][0]==joint_indx:
@@ -69,13 +70,15 @@ def get_kps_i(FramesAll,imgidx,kps_indx_i,joint_indx,gt_flag=False):
                         return [kps_i["x"][0],kps_i["y"][0]],head_coordinate
                     else:
                         return [kps_i["x"][0],kps_i["y"][0]]
+    print(trackid)
 
 def get_dis_i_j(gtFramesAll,prFramesAll,imgidx,joint_indx,FN_match_exc_thre_i):
     from eval_helpers import getHeadSize 
     for i,pair_i in enumerate(FN_match_exc_thre_i):
         gt_i=pair_i["gt"]
         pred_i=pair_i["predict"]
-        print("in get_dis_i_j",gtFramesAll[0])
+#         print("imgidx,gt_i,joint_indx:",imgidx,gt_i,joint_indx)
+#         print( get_kps_i(gtFramesAll,imgidx,gt_i,joint_indx,gt_flag=True) )
         pointGT,head_coordinate=get_kps_i(gtFramesAll,imgidx,gt_i,joint_indx,gt_flag=True)
         pointPr=get_kps_i(prFramesAll,imgidx,pred_i,joint_indx) 
         headSize = getHeadSize(head_coordinate[0],head_coordinate[1],head_coordinate[2],head_coordinate[3])
@@ -138,7 +141,8 @@ def process_frame(si, nJoints, seqidxs, seqidxsUniq, motAll, metricsMidNames,gtF
             FP[i]=cache["FP_i"]
             FN[i]=cache["FN_i"]
             FN_unmatch_curr[i]=cache["FN_unmatch_curr_i"]
-            FN_match_exc_thre.append( get_dis_i_j(gtFramesAll,prFramesAll,imgidx,i,cache["FN_match_exc_thre_i"] ))
+            FN_match_exc_thre.append( cache["FN_match_exc_thre_i"] )
+#             FN_match_exc_thre.append( get_dis_i_j(gtFramesAll,prFramesAll,imgidx,i,cache["FN_match_exc_thre_i"] ))
             IDSW[i]=cache["IDSW_i"]
             gt_num[i]=len(trackidxGT)
             
