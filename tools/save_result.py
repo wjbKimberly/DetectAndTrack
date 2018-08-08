@@ -1,6 +1,7 @@
 import matplotlib
 matplotlib.use('Agg')
 
+
 import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import cv2
@@ -137,7 +138,8 @@ def print_mid_mota(mid_mota_dic):
     
     header=""
     
-    names=["FN","FP","FN_unmatch_curr","FN_match_exc_thre","IDSW"]
+#     names=["FN","FP","FN_unmatch_curr","FN_match_exc_thre","IDSW"]
+    names=["FN","FP","FN_unmatch_curr","IDSW"]
     for i,hi in enumerate(dst_keypoints):
         header+="%d.%s\t"%(i,hi)
     header+="15.'Total'\t"
@@ -172,8 +174,8 @@ def show_bbox(coordinate,image_path,save_name="",result_path="",edgecolor='r'):
     frame.axes.get_xaxis().set_visible(False)
     if result_path!="" and save_name!="":
         plt.savefig(result_path+save_name)
-#     else:
-#         plt.show()
+    else:
+        plt.show()
         
 def show_kps(coordinate_keypoints,image_path,save_name="",result_path="",pointcolor='r*'):
     img = Image.open(image_path)
@@ -209,8 +211,8 @@ def show_kps(coordinate_keypoints,image_path,save_name="",result_path="",pointco
     frame.axes.get_xaxis().set_visible(False)
     if result_path!="" and save_name!="":
         plt.savefig(result_path+save_name)
-#     else:
-#         plt.show()
+    else:
+        plt.show()
         
 def convert_match_exc_thre(FN_match_exc_thre):
     FN_match_exc_thre_gt=[]
@@ -230,7 +232,7 @@ def convert_match_exc_thre(FN_match_exc_thre):
         
     return FN_match_exc_thre_gt,FN_match_exc_thre_pr,show_matrix
 
-def show_dic_i(dic_path,result_path,pre_root_path,gt_root_path,
+def show_dic_i(dic_path,result_path,image_root_path,pre_root_path,gt_root_path,
                FN_kps,FP_kps,match_gp_pair,FN_match_exc_thre,
                gt_person_dic,pre_person_dic,
                optical_flag,show_gt_flag,show_mota_flag):
@@ -243,7 +245,7 @@ def show_dic_i(dic_path,result_path,pre_root_path,gt_root_path,
 #   'final_boxes' and 'final_scores' means bbox which participating in final evaluate process
     tmp_dic=json.load(open(dic_path))
     image_path2="/home/data/posetrack_data/posetrack_data"+tmp_dic["image_name"][0]
-    image_path2=tmp_dic["image_name"]
+    image_path2=image_root_path+tmp_dic["image_name"]
     image_path1=image_path2[:-12]+str(tmp_dic["frame_id"]-1).zfill(8)+".jpg"
     print(image_path1)
     print(image_path2)
@@ -251,7 +253,7 @@ def show_dic_i(dic_path,result_path,pre_root_path,gt_root_path,
     fir_frame_flag= "000001.jpg" in tmp_dic["image_name"]
     
     #show gt 
-    predt_image_name=tmp_dic["image_name"]
+    predt_image_name=image_path2
     head_anno,keypoints,has_gt_flag=get_dic(gt_root_path,predt_image_name,get_gt=True)
     if has_gt_flag and show_gt_flag:
         
@@ -261,8 +263,8 @@ def show_dic_i(dic_path,result_path,pre_root_path,gt_root_path,
         print("current GT_keypoints:")
         show_kps(keypoints,predt_image_name,"current_GT_keypoints",result_path)
     
-    if show_mota_flag:
-        FN_match_exc_thre_gt,FN_match_exc_thre_pr,FN_match_exc_thre_show_matrix=convert_match_exc_thre(FN_match_exc_thre)
+#     if show_mota_flag:
+#         FN_match_exc_thre_gt,FN_match_exc_thre_pr,FN_match_exc_thre_show_matrix=convert_match_exc_thre(FN_match_exc_thre)
     # show detect
     if tmp_dic["detect"] !=[]:
         w,h=tmp_dic["size"]
@@ -285,15 +287,16 @@ def show_dic_i(dic_path,result_path,pre_root_path,gt_root_path,
         show_kps(current_detected_kps,image_path2,"current_detected_kps",result_path)
         
         print("current detected keypoints which participate in evaluating:")
+        print(current_detected_kps_for_eva)
         show_kps(current_detected_kps_for_eva,image_path2,"current_detected_kps_for_eva",result_path)
-        if show_mota_flag:
-            print("FN_match_exc_thre_gt")
-            show_kps(FN_match_exc_thre_gt,image_path2,"FN_match_exc_thre_gt",result_path)
-            print("FN_match_exc_thre_pr")
-            show_kps(FN_match_exc_thre_pr,image_path2,"FN_match_exc_thre_pr",result_path)
+#         if show_mota_flag:
+#             print("FN_match_exc_thre_gt")
+#             show_kps(FN_match_exc_thre_gt,image_path2,"FN_match_exc_thre_gt",result_path)
+#             print("FN_match_exc_thre_pr")
+#             show_kps(FN_match_exc_thre_pr,image_path2,"FN_match_exc_thre_pr",result_path)
         
-            print("distance between N_match_exc_thre_gt")
-            print(FN_match_exc_thre_show_matrix)
+#             print("distance between N_match_exc_thre_gt")
+#             print(FN_match_exc_thre_show_matrix)
         
         
         if optical_flag and not fir_frame_flag:
@@ -320,8 +323,8 @@ def show_dic_i(dic_path,result_path,pre_root_path,gt_root_path,
             print("current combined optical bbox and MASK-RCNN results:")
             show_bbox(coordinate_nms,image_path2,"flow_detected_nms_bbox",result_path)
             
-            print("After oks bboxes:")
-            show_bbox(np.asarray(tmp_dic["final_boxes"]).transpose([1,0]),image_path2,"final_boxes",result_path)
+#             print("After oks bboxes:")
+#             show_bbox(tmp_dic["final_boxes"],image_path2,"flow_detected_nms_bbox",result_path)
             
         show_kps(coordinate_keypoints,image_path2)
         
@@ -352,7 +355,7 @@ def show_dic_i(dic_path,result_path,pre_root_path,gt_root_path,
 def get_dic(dic_root_path,predt_image_name,get_gt=False):
     anno_root_path=dic_root_path
     anno_jsons=os.listdir(anno_root_path)
-    anno_jsons=[pi for pi in anno_jsons if ".json" in pi and not "1_test.json" in pi]
+    anno_jsons=[pi for pi in anno_jsons if ".json" in pi]
     for gt_i in anno_jsons:
         patt=r"([0-9]{2,})_mpii"
         num_ann=re.findall(patt,gt_i)[0]
@@ -396,10 +399,10 @@ def get_dic(dic_root_path,predt_image_name,get_gt=False):
     print("%s does not have gt/predict."%(predt_image_name))
     return None,None,False
 
-def show_mota_i(root_path,path_i,mota_root_path,mota_path_i,
+def show_mota_i(root_path,image_file_root_path,path_i,mota_root_path,mota_path_i,image_root_path,
                 optical_flag,show_gt_flag,show_mota_flag,save_result):
     
-    image_file_path=root_path+path_i
+    image_file_path=image_file_root_path+path_i
     
     tmp_dic_i=json.load(open(image_file_path))
     mid_mota_dic=json.load(open(mota_root_path+mota_path_i))
@@ -418,7 +421,7 @@ def show_mota_i(root_path,path_i,mota_root_path,mota_path_i,
         match_gp_pair=mid_mota_dic["match_gp_pair"]
         gt_person_dic=mid_mota_dic["gt_person_dic"]
         pre_person_dic=mid_mota_dic["pre_person_dic"]
-        FN_match_exc_thre=mid_mota_dic["FN_match_exc_thre"]
+#         FN_match_exc_thre=mid_mota_dic["FN_match_exc_thre"]
         
         if save_result: 
             result_path=result_root_path+path_i+"/"
@@ -426,8 +429,11 @@ def show_mota_i(root_path,path_i,mota_root_path,mota_path_i,
             result_path=""
         if not os.path.exists(result_path):
             os.mkdir(result_path)    
-        show_dic_i(image_file_path,result_path,pre_root_path,gt_root_path,
-                    FN_kps,FP_kps,match_gp_pair,FN_match_exc_thre,gt_person_dic,pre_person_dic,
+#         show_dic_i(image_file_path,result_path,image_root_path,pre_root_path,gt_root_path,
+#                     FN_kps,FP_kps,match_gp_pair,FN_match_exc_thre,gt_person_dic,pre_person_dic,
+#                     optical_flag,show_gt_flag,show_mota_flag)
+        show_dic_i(image_file_path,result_path,image_root_path,pre_root_path,gt_root_path,
+                    FN_kps,FP_kps,match_gp_pair,{},gt_person_dic,pre_person_dic,
                     optical_flag,show_gt_flag,show_mota_flag)
         
     
@@ -440,11 +446,9 @@ def has_mota_i(path_i,mota_file_list):
     return False,""
 #baseline
 root_path="show_results/01_R101_best_hungarian-4GPU-small.yaml_nms=0.500000_score=_0.050000_drop_low_conf=0.950000/"
-
-# root_path="show_results/01_R101_best_hungarian-4GPU-small-optical.yaml_optical_choice=0_nms=0.500000_score=_0.050000_drop_low_conf=0.950000_del_opt_thre=10.000000_use_oks_nms=0_forcezero/"
-root_path="show_results/01_R101_best_hungarian-4GPU-small-optical.yaml_optical_choice=2_nms=0.500000_score=_0.050000_drop_low_conf=0.950000_del_opt_thre=30.000000_use_oks_nms=0/"
-
 # root_path="show_results/01_R101_best_hungarian-4GPU-small-optical.yaml_optical_choice=2_nms=0.500000_score=_0.050000_drop_low_conf=0.950000_del_opt_thre=300.000000_use_oks_nms=1/"
+# root_path="show_results/01_R101_best_hungarian-4GPU-small-optical.yaml_optical_choice=2_nms=0.500000_score=_0.050000_drop_low_conf=0.950000_del_opt_thre=300.000000_use_oks_nms=1/"
+root_path="show_results/01_R101_best_hungarian-4GPU.yaml_nms=0.500000_score=_0.050000_drop_low_conf=0.950000/"
 
 show_mota_flag=True
 save_result=True
@@ -458,9 +462,12 @@ if save_result:
         os.mkdir(result_root_path)
 pre_root_path=root_path+"test/posetrack_v1.0_val_small/keypoint_rcnn/detections_withTracks.pkl_json/"
 # pre_root_path="/home/data/DetectAndTrack-wjb/outputs/configs/video/2d_best/01_R101_best_hungarian-4GPU-small-optical.yaml/test/posetrack_v1.0_val_small/keypoint_rcnn/detections_withTracks.pkl_json/"
-gt_root_path="/home/data/DetectAndTrack-wjb/lib/datasets/data/PoseTrackV1.0_Annots_val_small_json/"
+gt_root_path="../lib/datasets/data/PoseTrackV1.0_Annots_val_small_json/"
+image_root_path="../"
 
-image_file_list=os.listdir(root_path)
+
+image_file_root_path=root_path+"image_file/"
+image_file_list=os.listdir(image_file_root_path)
 image_file_list=[pi for pi in image_file_list if ".jpg" in pi]
 image_file_list=sorted(image_file_list)
 
@@ -482,19 +489,19 @@ FN_m=np.zeros((joint_num+1))
 FP_m=np.zeros((joint_num+1))
 IDSW_m=np.zeros((joint_num+1))
 FN_unmatch_curr_m=np.zeros((joint_num+1))
-FN_match_exc_thre_m=np.zeros((joint_num+1))
+# FN_match_exc_thre_m=np.zeros((joint_num+1))
 gt_num_m=np.zeros((joint_num+1))
 
     
 for path_i in image_file_list:
-#     if not ("23754" in path_i and int(path_i[-17:-9])>=45):
+#     if not ("23754" in path_i and int(path_i[-17:-9])>=79):
 #         continue
-    if not ("22430" in path_i):
-        continue
-    has_mota_i_flag,mota_path_i=has_mota_i(path_i,mota_file_list)
+#     if not ("22430" in path_i and "00049.jpg" in path_i):
+#         continue
+    has_mota_i_flag,mota_path_i=has_mota_i(path_i[7:],mota_file_list)
     if has_mota_i_flag and show_mota_flag:
         mid_mota_dic=json.load(open(mota_root_path+mota_path_i))
-        tmp_dic_i=json.load(open(root_path+path_i))
+        tmp_dic_i=json.load(open(image_file_root_path+path_i))
         if optical_flag and not "00001.jpg" in path_i:
             optical_num_m+=tmp_dic_i["del_num"]
             optical_num_m+=tmp_dic_i["optical_num"]
@@ -502,33 +509,35 @@ for path_i in image_file_list:
         FP_m+=mid_mota_dic["FP"]
         IDSW_m+=mid_mota_dic["IDSW"]
         FN_unmatch_curr_m+=mid_mota_dic["FN_unmatch_curr"]
-        fmeh=np.asarray([len(fmeh_i) for fmeh_i in mid_mota_dic["FN_match_exc_thre"][:-1]])
+#         fmeh=np.asarray([len(fmeh_i) for fmeh_i in mid_mota_dic["FN_match_exc_thre"][:-1]])
         
-        fmeh=np.hstack((fmeh,mid_mota_dic["FN_match_exc_thre"][-1]))
-        FN_match_exc_thre_m+=fmeh
+#         fmeh=np.hstack((fmeh,mid_mota_dic["FN_match_exc_thre"][-1]))
+#         FN_match_exc_thre_m+=fmeh
         gt_num_m+=mid_mota_dic["gt_num"]
-        show_mota_i(root_path,path_i,mota_root_path,mota_path_i,optical_flag,show_gt_flag,show_mota_flag,save_result)
-    else:
-        if save_result: 
-            result_path=result_root_path+path_i+"/"
-        else:
-            result_path=""
-        if not os.path.exists(result_path):
-            os.mkdir(result_path)
+#         show_mota_i(root_path,image_file_root_path,path_i,mota_root_path,mota_path_i,image_root_path,optical_flag,show_gt_flag,show_mota_flag,save_result)
+#     else:
+#         if save_result: 
+#             result_path=result_root_path+path_i+"/"
+#         else:
+#             result_path=""
+#         if not os.path.exists(result_path):
+#             os.mkdir(result_path)
             
-        show_dic_i(root_path+path_i,result_path,pre_root_path,gt_root_path,
-                   {},{},{},{},{},{},
-                   optical_flag,show_gt_flag=False,show_mota_flag=False)
-    print()
+#         show_dic_i(image_file_root_path+path_i,result_path,image_root_path,pre_root_path,gt_root_path,
+#                    {},{},{},{},{},{},
+#                    optical_flag,show_gt_flag=False,show_mota_flag=False)
+#     print()
 
 if show_mota_flag:
     print(FN_m)
     print(FP_m)
     print(IDSW_m)
     print(FN_unmatch_curr_m)
-    print(FN_match_exc_thre_m)
-    print(optical_num_m,del_num_m)
+#     print(FN_match_exc_thre_m)
+#     print(optical_num_m,del_num_m)
     print(gt_num_m)
     print("Total MOTA:")
-    eval_dic=json.load(open(root_path+"eval.json"))
-    print(eval_dic["total_MOTA"])
+#     eval_dic=json.load(open(root_path+"eval.json"))
+#     print(eval_dic["total_MOTA"])
+#     print(FN_m[-1],FP_m[-1],IDSW_m[-1],FN_unmatch_curr_m[-1],FN_match_exc_thre_m[-1])
+    print(FN_m[-1],FP_m[-1],IDSW_m[-1],FN_unmatch_curr_m[-1])

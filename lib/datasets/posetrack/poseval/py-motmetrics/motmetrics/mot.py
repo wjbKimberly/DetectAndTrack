@@ -87,7 +87,7 @@ class MOTAccumulator(object):
         self.m = {} # Pairings up to current timestamp  
         self.last_occurrence = {} # Tracks most recent occurance of object
 
-    def update(self, oids, hids, dists, FP,FN,FN_unmatch_curr,FN_match_exc_thre,FN_kps_indx,FP_kps_indx,match_gp_pair_i,IDSW,frameid=None):
+    def update(self, oids, hids, dists,frameid=None):
         """Updates the accumulator with frame specific objects/detections.
 
         This method generates events based on the following algorithm [1]:
@@ -127,6 +127,11 @@ class MOTAccumulator(object):
         EURASIP Journal on Image and Video Processing 2008.1 (2008): 1-10.
         """
         
+        #############jianbo add############
+        FP_i,FN_i,FN_unmatch_curr_i,FN_match_exc_thre_i,FN_kps_indx_i,FP_kps_indx_i,match_gp_pair_i,IDSW_i=0,0,0,[],[],[],{},0
+        #############jianbo add############
+        
+        
         oids = ma.array(oids, mask=np.zeros(len(oids)))
         hids = ma.array(hids, mask=np.zeros(len(hids)))  
         dists = np.atleast_2d(dists).astype(float).reshape(oids.shape[0], hids.shape[0])
@@ -139,9 +144,6 @@ class MOTAccumulator(object):
         
         eid = count()
         dists, INVDIST = self._sanitize_dists(dists)
-        #############jianbo add############
-        FN_match_exc_thre[0]=[]
-        #############jianbo add############
         
         if oids.size * hids.size > 0:        
             # 1. Try to re-establish tracks from previous correspondences
@@ -164,7 +166,7 @@ class MOTAccumulator(object):
                 #############jianbo add############
                 # o and h are matched in the last frame but their distance in current frame is larger than threshold 
                 else:
-                    FN_unmatch_curr[0]+=1
+                    FN_unmatch_curr_i+=1
                 #############jianbo add############
                     
             # 2. Try to remaining objects/hypotheses
@@ -178,7 +180,7 @@ class MOTAccumulator(object):
                 #############jianbo add############
                     matched_flag=bool(oids.mask[i]) or bool(hids.mask[j])
                     if not matched_flag:
-                        FN_match_exc_thre[0].append({"gt":oids[i],
+                        FN_match_exc_thre_i.append({"gt":oids[i],
                                                      "predict":hids[j],
                                                      "dis":dists[i, j]
                                                     })
@@ -187,6 +189,8 @@ class MOTAccumulator(object):
                 
                 o = oids[i]
                 h = hids.data[j]
+#                 is_switch = o in self.m and \
+#                             self.m[o] != h 
                 is_switch = o in self.m and \
                             self.m[o] != h and \
                             abs(frameid - self.last_occurrence[o]) <= self.max_switch_time
@@ -197,7 +201,7 @@ class MOTAccumulator(object):
                     match_gp_pair_i[oids[i]]=hids[j]
                 # it is th
                 if is_switch:
-                    IDSW[0]+=1
+                    IDSW_i+=1
                 #############jianbo add############
                 
                 self.events.loc[(frameid, next(eid)), :] = [cat, oids.data[i], hids.data[j], dists[i, j]]
@@ -205,26 +209,41 @@ class MOTAccumulator(object):
                 hids[j] = ma.masked
                 self.m[o] = h
                 
-#         FN_match_exc_thre[0]=len([ki for ki in exceed_thre_match.keys() if exceed_thre_match[ki]!=0])
         # 3. All remaining objects are missed
         for o in oids[~oids.mask]:
             self.events.loc[(frameid, next(eid)), :] = ['MISS', o, np.nan, np.nan]
-            FN_kps_indx[0].append(o)
-            FN[0]+=1
+            FN_kps_indx_i.append(o)
+            FN_i+=1
             
         # 4. All remaining hypotheses are false alarms
         for h in hids[~hids.mask]:
             self.events.loc[(frameid, next(eid)), :] = ['FP', np.nan, h, np.nan]
-            FP_kps_indx[0].append(h)
-            FP[0]+=1
+            FP_kps_indx_i.append(h)
+            FP_i+=1
         # 5. Update occurance state
         for o in oids.data:
             self.last_occurrence[o] = frameid
         
+        
+        #############jianbo add############
+        
+        cache={
+            "FP_i":FP_i,
+            "FN_i":FN_i,
+            "FN_unmatch_curr_i":FN_unmatch_curr_i,
+            "FN_match_exc_thre_i":FN_match_exc_thre_i,
+            "FN_kps_indx_i":FN_kps_indx_i,
+            "FP_kps_indx_i":FP_kps_indx_i,
+            "match_gp_pair_i":match_gp_pair_i,
+            "IDSW_i":IDSW_i
+        
+        }
+        #############jianbo add############
+        
         if frameid in self.events.index:
-            return self.events.loc[frameid]
+            return self.events.loc[frameid],cache
         else:
-            return None
+            return None,cache
         
     @staticmethod
     def new_event_dataframe():

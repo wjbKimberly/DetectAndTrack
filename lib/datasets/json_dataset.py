@@ -49,20 +49,37 @@ DATASETS = {
         ANN_DN: 'lib/datasets/data/PoseTrackV1.0_Annots_train_json/',
     },
     'posetrack_v1.0_val': {
-        IM_DIR: 'lib/datasets/data/PoseTrack/',
+        IM_DIR: 'lib/datasets/data/PoseTrack/posetrack_data/images',
         ANN_FN: 'lib/datasets/lists/PoseTrack/v1.0/posetrack_val.json',
         ANN_DN: 'lib/datasets/data/PoseTrackV1.0_Annots_val_json',
     },
     'posetrack_v1.0_val_small': {
-        IM_DIR: '/home/data/DetectAndTrack-wjb/lib/datasets/data/PoseTrack/',
-        ANN_FN: '/home/data/DetectAndTrack-wjb/lib/datasets/lists/PoseTrack/v1.0/posetrack_val_small.json',
-        ANN_DN: '/home/data/DetectAndTrack-wjb/lib/datasets/data/PoseTrackV1.0_Annots_val_small_json',
+        IM_DIR: 'lib/datasets/data/PoseTrack/posetrack_data/images',
+        ANN_FN: 'lib/datasets/lists/PoseTrack/v1.0/posetrack_val_small.json',
+        ANN_DN: 'lib/datasets/data/PoseTrackV1.0_Annots_val_small_json',
     },
     'posetrack_v1.0_test': {
         IM_DIR: 'lib/datasets/data/PoseTrack/',
         ANN_FN: 'lib/datasets/lists/PoseTrack/v1.0/posetrack_test.json',
         ANN_DN: 'lib/datasets/data/PoseTrackV1.0_Annots_test_json',
     },
+    
+    'posetrack_v2.0_train': {
+        IM_DIR: 'lib/datasets/data/PoseTrack/posetrack_data_v2.0/images/train',
+        ANN_FN: 'lib/datasets/lists/PoseTrack/v2.0/posetrack_train.json',
+        ANN_DN: 'lib/datasets/data/PoseTrackV2.0_Annots_train_json/',
+    },
+    'posetrack_v2.0_val': {
+        IM_DIR: 'lib/datasets/data/PoseTrack/posetrack_data_v2.0/images/val',
+        ANN_FN: 'lib/datasets/lists/PoseTrack/v2.0/posetrack_val.json',
+        ANN_DN: 'lib/datasets/data/PoseTrackV2.0_Annots_val_json',
+    },
+    'posetrack_v2.0_test': {
+        IM_DIR: 'lib/datasets/data/PoseTrack/posetrack_data_v2.0/images/test',
+        ANN_FN: 'lib/datasets/lists/PoseTrack/v2.0/posetrack_test.json',
+        ANN_DN: 'lib/datasets/data/PoseTrackV2.0_Annots_test_json',
+    },
+    
     'mens': {
         IM_DIR: '/home/data/DetectAndTrack-wjb/lib/datasets/data/mens/',
         ANN_FN: '/home/data/DetectAndTrack-wjb/lib/datasets/lists/mens/mens.json',

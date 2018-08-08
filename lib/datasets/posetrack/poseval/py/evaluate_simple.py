@@ -24,7 +24,7 @@ def evaluate(gtdir, preddir, eval_pose=True, eval_track=True,
         apAll, preAll, recAll = evaluateAP(gtFramesAll, prFramesAll)
         print('Average Precision (AP) metric:')
         printTable(apAll)
-
+        
     metrics = np.full((Joint().count + 4, 1), np.nan)
     if eval_track:
         metricsAll = evaluateTracking(

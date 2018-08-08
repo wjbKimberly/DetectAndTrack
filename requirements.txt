@@ -11,3 +11,4 @@ memory_profiler
 tqdm
 shapely
 pandas
+pillow

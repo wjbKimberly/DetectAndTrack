@@ -52,8 +52,27 @@ def main():
     assert_and_infer_cfg()
     test_output_dir = get_output_dir(training=False)
     json_data, _, _, _, _ = get_roidb_and_dataset(None, include_gt=True)
-    run_posetrack_tracking(test_output_dir, json_data)
-
+#     run_posetrack_tracking(test_output_dir, json_data)
+    ##################### add by jianbo #############
+    score_ap, score_mot,apAll, preAll, recAll, mota =run_posetrack_tracking(test_output_dir, json_data)
+    import re,os,json
+    from core.config import get_log_dir_path
+    tmp_dic={
+                "total_AP": score_ap.tolist(),
+                "total_MOTA":score_mot.tolist(),
+                "apAll":apAll.tolist(),
+                "preAll": preAll.tolist(),
+                "recAll": recAll.tolist(),
+                "mota":mota.tolist()
+            }
+    dir_path=get_log_dir_path()
+    if not os.path.exists(dir_path):
+        os.mkdir(dir_path)
+    f=open(dir_path+"/eval.json","w")
+    f.write(json.dumps(tmp_dic))
+    f.flush()
+    f.close()
+    ##################### add by jianbo #############
 
 if __name__ == '__main__':
     main()

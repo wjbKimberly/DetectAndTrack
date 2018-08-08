@@ -11,7 +11,6 @@
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-from __future__ import unicode_literals
 
 import numpy as np
 import cv2
@@ -1377,6 +1376,7 @@ def im_detect_all(model, entry, box_proposals, timers=None,pre_entry=None,pre_ke
         timers['misc_keypoints'].tic()
         
 #         print("3 detected:",boxes.shape,boxes[np.where(~is_opt_flag)].shape)
+
         cls_keyps,keypoints,is_opt_flag,cls_boxes,boxes,scores,del_num = keypoint_results(is_opt_flag,cls_boxes, heatmaps, boxes,scores)
 
 #         print("4 detected:",boxes.shape,boxes[np.where(~is_opt_flag)].shape)
@@ -1396,6 +1396,7 @@ def im_detect_all(model, entry, box_proposals, timers=None,pre_entry=None,pre_ke
                     xy_i[joint_index].append(joint_index)
             xy_i=np.asarray(xy_i).transpose([1,0]).tolist()
             tmp_dic["keypoints"].append(xy_i)
+        tmp_dic["heatmaps"]=heatmaps.tolist()
         
         if cfg.TEST.OPTICAL_BBOX and pre_entry!=None and pre_keypoints!=None:
             print("optical_num",optical_num,",del_num",del_num)
@@ -1415,12 +1416,15 @@ def im_detect_all(model, entry, box_proposals, timers=None,pre_entry=None,pre_ke
     dir_path=get_log_dir_path()
     if not os.path.exists(dir_path):
         os.mkdir(dir_path)
+    dir_image_file_path=dir_path+"/image_file/"
+    if not os.path.exists(dir_image_file_path):
+        os.mkdir(dir_image_file_path)
     if "PoseTrack" in tmp_dic["image_name"]:
-        patt=r"data/PoseTrack/(.+\.jpg)"
+        patt=r"data/PoseTrack/posetrack_data/(.+\.jpg)"
     else:
         patt=r"/home/data/DetectAndTrack-wjb/lib/datasets/data/mens/(.+\.jpg)"
     image_name=re.findall(patt,tmp_dic["image_name"])[0]
-    f=open(dir_path+"/%s.json"%str(image_name).replace('/','\\'),"w")
+    f=open(dir_image_file_path+"/%s.json"%str(image_name).replace('/','\\'),"w")
     f.write(json.dumps(tmp_dic))
     f.flush()
     f.close()

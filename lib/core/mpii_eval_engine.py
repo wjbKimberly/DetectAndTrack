@@ -287,7 +287,8 @@ def _run_posetrack_eval(roidb, det_file, dataset, output_dir):
     for vname in tqdm(out_data.keys(), desc='Writing JSON files for eval'):
         vdata = out_data[vname]
         outfpath = osp.join(
-            output_dir, out_filenames[osp.join('images', vname)])
+            output_dir, out_filenames['images'+vname])
+#             output_dir, out_filenames[osp.join('images', vname)])
         with open(outfpath, 'w') as fout:
             json.dump({'annolist': vdata}, fout, indent=4)
             

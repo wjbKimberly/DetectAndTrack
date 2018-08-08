@@ -72,9 +72,9 @@ TEST:
   #confidence
   SCORE_THRESH: 0.05
   
-  DEL_OPT_BBOX_OKS: 300.0
+  DEL_OPT_BBOX_OKS: 30.0
   OPTICAL_MODEL_PATH: '/home/data/DetectAndTrack-wjb/flownet2_model/FlowNet2_model_best.pth.tar'
-  OPT_OKS_NMS: True
+  OPT_OKS_NMS: False
   #=================change=================
 TRACKING:
   CONF_FILTER_INITIAL_DETS: 0.95

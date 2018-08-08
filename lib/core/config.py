@@ -937,5 +937,5 @@ def get_log_dir_path():
         dir_path="tools/show_results/%s_optical_choice=%d_nms=%f_score=_%f_drop_low_conf=%f_del_opt_thre=%f_use_oks_nms=%d"%(cfg_file,cfg.TEST.OPTICAL_CHOICE,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH,cfg.TRACKING.CONF_FILTER_INITIAL_DETS,cfg.TEST.DEL_OPT_BBOX_OKS,cfg.TEST.OPT_OKS_NMS)
 #          dir_path="tools/show_results/%s_optical_choice=%d_nms=%f_score=%f_extend_opt_bbox=%f_nms_opt=%f_force_opt_bbox=%f_drop_kps_score=%f"%(cfg_file,cfg.TEST.OPTICAL_CHOICE,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH,cfg.TEST.EXTEND_OPT_BBOX,cfg.TEST.NMS_OPTICAL,cfg.TEST.FORCE_ADD_OPTICAL,cfg.EVAL.DROP_KPS_SCORE)
     else:
-        dir_path="tools/show_results/%s_nms=%f_score=_%f_drop_low_conf=%f_pr_sub_one"%(cfg_file,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH,cfg.TRACKING.CONF_FILTER_INITIAL_DETS)
+        dir_path="tools/show_results/%s_nms=%f_score=_%f_drop_low_conf=%f"%(cfg_file,cfg.TEST.NMS,cfg.TEST.SCORE_THRESH,cfg.TRACKING.CONF_FILTER_INITIAL_DETS)
     return dir_path

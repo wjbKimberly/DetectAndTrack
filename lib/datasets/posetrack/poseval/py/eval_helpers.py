@@ -383,6 +383,8 @@ def load_data_dir(argv):
     for imgidx in range(len(gt)):
         gt[imgidx]["seq_id"] = i
         gt[imgidx]["image_name"] = gt[imgidx]["image"][0]["name"]
+        
+        
         for ridxGT in range(len(gt[imgidx]["annorect"])):
             if ("track_id" in gt[imgidx]["annorect"][ridxGT].keys()):
                 # adjust track_ids to make them unique across all sequences

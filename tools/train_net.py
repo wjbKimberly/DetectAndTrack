@@ -13,6 +13,14 @@ from __future__ import unicode_literals
 import cv2  # NOQA (Must import before importing caffe2 due to bug in cv2)
 
 from caffe2.python import workspace, utils as c2_utils
+
+
+#################################
+import sys
+import os.path as osp
+import os
+sys.path.insert(0, osp.join(os.getcwd(), 'lib'))
+
 from core.config import (
     cfg, cfg_from_list, cfg_from_file, get_output_dir, assert_and_infer_cfg)
 from datasets.roidb import combined_roidb_for_training
