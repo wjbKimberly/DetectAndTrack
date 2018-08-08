@@ -1,0 +1,288 @@
+!!python/object/new:utils.collections.AttrDict
+dictitems:
+  BBOX_XFORM_CLIP: !!python/object/apply:numpy.core.multiarray.scalar
+  - &id001 !!python/object/apply:numpy.dtype
+    args: [f8, 0, 1]
+    state: !!python/tuple [3, <, null, null, null, -1, -1, 0]
+  - !!binary |
+    qeISGmmKEEA=
+  CLUSTER: !!python/object/new:utils.collections.AttrDict
+    dictitems: {AUTO_RESUME: true, ON_CLUSTER: false}
+  DEBUG: !!python/object/new:utils.collections.AttrDict
+    dictitems: {DATA_LOADING: false, STOP_TRAIN_ITER: false}
+  DEDUP_BOXES: 0.0625
+  DEVSTORAGE: !!python/object/new:utils.collections.AttrDict
+    dictitems: {HOSTNAME: '', MOUNT_ENABLED: false, MOUNT_POINT: /tmp/devstorage,
+      REMOTE_PATH: ''}
+  EPS: 1.0e-14
+  EVAL: !!python/object/new:utils.collections.AttrDict
+    dictitems: {DROP_KPS_SCORE: 0.0, EVAL_MPII_DROP_DETECTION_THRESHOLD: 0.5, EVAL_MPII_KPT_THRESHOLD: 1.95,
+      EVAL_MPII_PER_VIDEO: false}
+  EXT_PATHS: !!python/object/new:utils.collections.AttrDict
+    dictitems: {POSEVAL_CODE_PATH: /home/rgirdhar/local/OpenSource/bitbucket/poseval/}
+  FAST_RCNN: !!python/object/new:utils.collections.AttrDict
+    dictitems: {MLP_HEAD_DIM: 1024, ROI_XFORM_METHOD: RoIAlign, ROI_XFORM_RESOLUTION: 7,
+      ROI_XFORM_SAMPLING_RATIO: 2}
+  FINAL_MSG: ''
+  FPN: !!python/object/new:utils.collections.AttrDict
+    dictitems:
+      COARSEST_STRIDE: 32
+      DIM: 256
+      EXTRA_CONV_LEVELS: false
+      FPN_ON: true
+      INPLACE_LATERAL: false
+      MULTILEVEL_ROIS: true
+      MULTILEVEL_RPN: true
+      ROI_CANONICAL_LEVEL: 4
+      ROI_CANONICAL_SCALE: 224
+      ROI_MAX_LEVEL: 5
+      ROI_MIN_LEVEL: 2
+      RPN_ANCHOR_START_SIZE: 32
+      RPN_ASPECT_RATIOS: !!python/tuple [0.5, 1, 2]
+      RPN_MAX_LEVEL: 6
+      RPN_MIN_LEVEL: 2
+      ZERO_INIT_LATERAL: false
+  KRCNN: !!python/object/new:utils.collections.AttrDict
+    dictitems: {CONV_HEAD_DIM: 512, CONV_HEAD_KERNEL: 3, CONV_INIT: MSRAFill, DECONV_DIM: 256,
+      DECONV_KERNEL: 4, DILATION: 1, HEATMAP_SIZE: 56, INFERENCE_MIN_SIZE: 0, KEYPOINT_CONFIDENCE: bbox,
+      LOSS_WEIGHT: 1.0, MIN_KEYPOINT_COUNT_FOR_VALID_MINIBATCH: 20, NMS_OKS: false,
+      NO_3D_DECONV_TIME_TO_CH: false, NUM_KEYPOINTS: 17, NUM_STACKED_CONVS: 8, ROI_KEYPOINTS_HEAD: keypoint_rcnn_heads.add_roi_pose_head_v1convX,
+      ROI_XFORM_METHOD: RoIAlign, ROI_XFORM_RESOLUTION: 14, ROI_XFORM_SAMPLING_RATIO: 2,
+      UP_SCALE: 2, USE_3D_DECONV: false, USE_DECONV: false, USE_DECONV_OUTPUT: true}
+  MATLAB: matlab
+  MEMONGER: true
+  MEMONGER_SHARE_ACTIVATIONS: false
+  MODEL: !!python/object/new:utils.collections.AttrDict
+    dictitems:
+      BBOX_REG_WEIGHTS: !!python/tuple [10.0, 10.0, 5.0, 5.0]
+      BN_EPSILON: 1.0000001e-05
+      BN_MOMENTUM: 0.9
+      CLS_AGNOSTIC_BBOX_REG: false
+      CONV_BODY: FPN3D.add_fpn_ResNet101_conv5_body
+      DILATION: 1
+      EXECUTION_TYPE: dag
+      FASTER_RCNN: true
+      KEYPOINTS_ON: true
+      MASK_ON: false
+      NUM_CLASSES: 2
+      PS_GRID_SIZE: 3
+      ROI_HEAD: head_builder.add_roi_2mlp_head
+      RPN_ONLY: false
+      TYPE: keypoint_rcnn
+      USE_BN: false
+      USE_BN_TESTMODE_ONLY: false
+      VIDEO_ON: true
+  MRCNN: !!python/object/new:utils.collections.AttrDict
+    dictitems: {CLS_SPECIFIC_MASK: true, CONV_INIT: GaussianFill, DILATION: 2, DIM_REDUCED: 256,
+      MASK_HEAD_NAME: '', RESOLUTION: 14, ROI_XFORM_METHOD: RoIAlign, ROI_XFORM_RESOLUTION: 7,
+      ROI_XFORM_SAMPLING_RATIO: 0, THRESH_BINARIZE: 0.5, UPSAMPLE_RATIO: 1, USE_FC_OUTPUT: false,
+      WEIGHT_LOSS_MASK: 1.0}
+  NUM_GPUS: 4
+  NUM_WORKERS: 4
+  OUTPUT_DIR: outputs/configs/video/2d_best/01_R101_best_hungarian-4GPU.yaml
+  PIXEL_MEANS: !!python/object/apply:numpy.core.multiarray._reconstruct
+    args:
+    - !!python/name:numpy.ndarray ''
+    - !!python/tuple [0]
+    - b
+    state: !!python/tuple
+    - 1
+    - !!python/tuple [1, 1, 3]
+    - *id001
+    - false
+    - !!binary |
+      0LNZ9bm+WUB/arx0k/xcQK+UZYhjsV5A
+  RESNETS: !!python/object/new:utils.collections.AttrDict
+    dictitems: {NUM_GROUPS: 1, STRIDE_1X1: true, TRANS_FUNC: bottleneck_transformation,
+      WIDTH_PER_GROUP: 64}
+  RNG_SEED: 3
+  ROIDB_SUBSET: []
+  ROOT_DIR: /var/storage/shared/pnrsy/t-jiwan/DetectAndTrack-wjb
+  ROOT_GPU_ID: 0
+  RPN: !!python/object/new:utils.collections.AttrDict
+    dictitems:
+      ASPECT_RATIOS: !!python/tuple [0.5, 1, 2]
+      'ON': true
+      SIZES: !!python/tuple [64, 128, 256, 512]
+      STRIDE: 16
+  SOLVER: !!python/object/new:utils.collections.AttrDict
+    dictitems:
+      BASE_LR: 0.0005
+      GAMMA: 0.1
+      LOG_LR_CHANGE_THRESHOLD: 1.1
+      LRS: []
+      LR_POLICY: steps_with_decay
+      MAX_ITER: 26000
+      MOMENTUM: 0.9
+      SCALE_MOMENTUM: true
+      SCALE_MOMENTUM_THRESHOLD: 1.1
+      STEPS: [0, 20000, 24000]
+      STEP_SIZE: 30000
+      WARM_UP_FACTOR: 0.3333333333333333
+      WARM_UP_ITERS: 500
+      WARM_UP_METHOD: !!python/unicode 'linear'
+      WEIGHT_DECAY: 0.0001
+  TEST: !!python/object/new:utils.collections.AttrDict
+    dictitems:
+      BBOX_AUG: !!python/object/new:utils.collections.AttrDict
+        dictitems:
+          AREA_TH_HI: 32400
+          AREA_TH_LO: 2500
+          ASPECT_RATIOS: !!python/tuple []
+          ASPECT_RATIO_H_FLIP: false
+          COORD_HEUR: ID
+          H_FLIP: false
+          MAX_SIZE: 4000
+          SCALES: !!python/tuple []
+          SCALE_H_FLIP: false
+          SCALE_SIZE_DEP: false
+          SCORE_HEUR: ID
+      BBOX_REG: true
+      BBOX_VOTE: !!python/object/new:utils.collections.AttrDict
+        dictitems: {ENABLED: false, VOTE_TH: 0.8}
+      COMPETITION_MODE: false
+      DATASET: posetrack_v1.0_val
+      DATASETS: !!python/tuple [posetrack_v1.0_val]
+      DEL_OPT_BBOX_OKS: 0.0
+      DETECTIONS_PER_IM: 100
+      DROP_OPTICAL_KPS_SCORE: 0.0
+      ENSEMBLE: !!python/object/new:utils.collections.AttrDict
+        dictitems:
+          DEVSTORAGE_CACHE: false
+          PROPOSAL_CACHE: /tmp
+          RPN_CONFIGS: !!python/tuple []
+      EXTEND_OPT_BBOX: 1.0
+      EXT_CNN_FEATURES: false
+      EXT_CNN_FEATURES_MODEL: ImNet
+      FORCE_ADD_OPTICAL: 0.0
+      FORCE_JSON_DATASET_EVAL: false
+      INIT_RANDOM_VARS_BEFORE_LOADING: false
+      KPS_AUG: !!python/object/new:utils.collections.AttrDict
+        dictitems:
+          AREA_TH: 32400
+          ASPECT_RATIOS: !!python/tuple []
+          ASPECT_RATIO_H_FLIP: false
+          HEUR: HM_AVG
+          H_FLIP: false
+          MAX_SIZE: 4000
+          SCALES: !!python/tuple []
+          SCALE_H_FLIP: false
+          SCALE_SIZE_DEP: false
+      MASK_AUG: !!python/object/new:utils.collections.AttrDict
+        dictitems:
+          AREA_TH: 32400
+          ASPECT_RATIOS: !!python/tuple []
+          ASPECT_RATIO_H_FLIP: false
+          HEUR: SOFT_AVG
+          H_FLIP: false
+          MAX_SIZE: 4000
+          SCALES: !!python/tuple []
+          SCALE_H_FLIP: false
+          SCALE_SIZE_DEP: false
+      MAX_SIZE: 1333
+      NMS: 0.5
+      NMS_OPTICAL: 0.3
+      OPTICAL_BBOX: false
+      OPTICAL_CHOICE: 0
+      OPTICAL_MODEL_PATH: ''
+      OPT_OKS_NMS: false
+      PROPOSAL_FILE: ''
+      PROPOSAL_FILES: !!python/tuple ['']
+      PROPOSAL_LIMIT: 2000
+      RPN_MIN_SIZE: 0
+      RPN_NMS_THRESH: 0.7
+      RPN_POST_NMS_TOP_N: 1000
+      RPN_PRE_NMS_TOP_N: 1000
+      SCALES: !!python/tuple [800]
+      SCORE_THRESH: 0.05
+      SOFT_NMS: !!python/object/new:utils.collections.AttrDict
+        dictitems: {ENABLED: false, METHOD: linear, SIGMA: 0.5}
+      SVM: false
+      WEIGHTS: pretrained_models/configs/video/2d_best/01_R101_best_hungarian.yaml/model_final.pkl
+  TRACKING: !!python/object/new:utils.collections.AttrDict
+    dictitems:
+      BIPARTITE_MATCHING_ALGO: hungarian
+      CNN_MATCHING_LAYER: layer3
+      CONF_FILTER_INITIAL_DETS: 0.95
+      DEBUG: !!python/object/new:utils.collections.AttrDict
+        dictitems: {DUMMY_TRACKS: false, FLOW_SMOOTHING_COMBINE: false, UPPER_BOUND: false,
+          UPPER_BOUND_2_GT_KPS: false, UPPER_BOUND_2_GT_KPS_ONLY_CONF: false, UPPER_BOUND_3_SHOTS: false,
+          UPPER_BOUND_4_EVAL_UPPER_BOUND: false, UPPER_BOUND_5_GT_KPS_ONLY: false}
+      DETECTIONS_FILE: ''
+      DISTANCE_METRICS: !!python/tuple [bbox-overlap, cnn-cosdist]
+      DISTANCE_METRIC_WTS: !!python/tuple [1.0, 0.0]
+      FLOW_SMOOTHING: !!python/object/new:utils.collections.AttrDict
+        dictitems: {EXTEND_TRACKS: true, FLOW_SHOT_BOUNDARY_TH: 6.0, N_CONTEXT_FRAMES: 3}
+      FLOW_SMOOTHING_ON: false
+      KEEP_CENTER_DETS_ONLY: true
+      KP_CONF_TYPE: global
+      LSTM: !!python/object/new:utils.collections.AttrDict
+        dictitems:
+          BATCH_SIZE: 20
+          CONSIDER_SHORT_TRACKS_TOO: false
+          DROPOUT: 0.2
+          EMSIZE: 200
+          EPOCHS: 10
+          FEATS_TO_CONSIDER: [!!python/unicode 'bbox', !!python/unicode 'kpts']
+          GRAD_CLIP: 0.25
+          LOG_INTERVAL: 200
+          LOSS_LAST_PRED_ONLY: false
+          LR: 0.1
+          MODEL: LSTM
+          NHID: 200
+          NLAYERS: 2
+          NUM_WORKERS: 4
+          TIED_WTS: false
+      LSTM_TEST: !!python/object/new:utils.collections.AttrDict
+        dictitems: {LSTM_TRACKING_ON: false, LSTM_WEIGHTS: ''}
+  TRAIN: !!python/object/new:utils.collections.AttrDict
+    dictitems:
+      ASPECT_GROUPING: true
+      BATCH_SIZE_PER_IM: 512
+      BBOX_NORMALIZE_TARGETS_PRECOMPUTED_deprecated: null
+      BBOX_REG: true
+      BBOX_THRESH: 0.5
+      BG_THRESH_HI: 0.5
+      BG_THRESH_LO: 0.0
+      CROWD_FILTER_THRESH: 0.7
+      DATASET: posetrack_v1.0_train
+      DROPOUT: 0.0
+      FG_FRACTION: 0.25
+      FG_THRESH: 0.5
+      GT_MIN_AREA: -1
+      IMS_PER_BATCH: 1
+      MAX_SIZE: 1333
+      MINIBATCH_QUEUE_SIZE: 64
+      PROPOSAL_FILE: ''
+      RPN_BATCH_SIZE_PER_IM: 256
+      RPN_FG_FRACTION: 0.5
+      RPN_MIN_SIZE: 0
+      RPN_NEGATIVE_OVERLAP: 0.3
+      RPN_NMS_THRESH: 0.7
+      RPN_POSITIVE_OVERLAP: 0.7
+      RPN_POST_NMS_TOP_N: 2000
+      RPN_PRE_NMS_TOP_N: 2000
+      RPN_STRADDLE_THRESH: 0
+      SCALES: !!python/tuple [640, 672, 704, 736, 768, 800]
+      SNAPSHOT_ITERS: 20000
+      USE_FLIPPED: true
+      WEIGHTS: pretrained_models/e2e_keypoint_rcnn_R-101-FPN_1x_trainedCOCO.pkl
+  USE_GPU_NMS_deprecated: null
+  USE_NCCL: false
+  VIDEO: !!python/object/new:utils.collections.AttrDict
+    dictitems:
+      BODY_HEAD_LINK: slice-center
+      DEBUG_USE_RPN_GT: false
+      DEFAULT_CLIPS_PER_VIDEO: 9999999999
+      NUM_FRAMES: 1
+      NUM_FRAMES_MID: 1
+      PREDICT_RPN_BOX_VIS: false
+      RPN_TUBE_GEN_STYLE: replicate
+      TIME_INTERVAL: 0
+      TIME_KERNEL_DIM: !!python/object/new:utils.collections.AttrDict
+        dictitems: {BODY: 1, HEAD_DET: 1, HEAD_KPS: 1, HEAD_RPN: 1}
+      TIME_STRIDE_ON: false
+      WEIGHTS_INFLATE_MODE: center-only
+  VIS: false
+  VIS_THR: 0.9
+  VOC_DIR: /mnt/vol/gfsai-east/ai-group/datasets
