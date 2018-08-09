@@ -162,9 +162,9 @@ def process_frame(si, nJoints, seqidxs, seqidxsUniq, motAll, metricsMidNames,gtF
         gt_person_dic,pre_person_dic=get_gt_pre_dics(gtFramesAll,prFramesAll,imgidx,match_gp_pair)
         
         name_=motAll[imgidx]["image_name"]
-        if "145.jpg" in name_ and "00522" in name_:
-            flag=True
-            print("process_frame%d Catch!!!!!!"%si)
+#         if "145.jpg" in name_ and "00522" in name_:
+#             flag=True
+#             print("process_frame%d Catch!!!!!!"%si)
             
         ######################## save fp,fn,idsw values #################
         import re,os,json
@@ -254,9 +254,9 @@ def computeMetrics(gtFramesAll, prFramesAll,motAll):
 #         nJoints=nJoints, seqidxs=seqidxs, seqidxsUniq=seqidxsUniq,
 #         motAll=motAll, metricsMidNames=metricsMidNames,gtFramesAll=gtFramesAll,prFramesAll=prFramesAll), range(nSeq))
                 
-    if not flag:
-        print("process_frame Catch bad!!!!!!")
-        assert(False)
+#     if not flag:
+#         print("process_frame Catch bad!!!!!!")
+#         assert(False)
     for si in range(nSeq):
         # compute intermediate metrics per joint per sequence
         all_metricsMid, accAll = res_all_metricsMid[si]
